@@ -87,6 +87,7 @@
 <header>
   <h1>AI Decision <span>/ Evidence Hub</span></h1>
   <span class="src-badge" id="srcBadge">ledger: …</span>
+  <span class="src-badge" id="keyBadge" onclick="promptKey()" style="cursor:pointer" title="Set / change admin API key">🔑 no key</span>
   <div class="grow"></div>
   <input id="eventId" placeholder="ledger event_id to evaluate" />
   <button class="primary" onclick="evaluateOne()">Evaluate</button>
@@ -110,11 +111,37 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const api = (p, opts) => fetch(p, opts).then(async r => {
-  const body = r.headers.get("content-type")?.includes("json") ? await r.json() : await r.text();
-  if (!r.ok) throw new Error(typeof body === "string" ? body : (body.detail || JSON.stringify(body)));
-  return body;
-});
+// ── admin API key (stored in the browser, sent as x-api-key on every request) ──
+const KEY_NAME = "eh_admin_key";
+const getKey = () => localStorage.getItem(KEY_NAME) || "";
+function setKey(k) {
+  k ? localStorage.setItem(KEY_NAME, k) : localStorage.removeItem(KEY_NAME);
+  const b = document.getElementById("keyBadge");
+  if (b) b.textContent = getKey() ? "🔑 key set" : "🔑 no key";
+}
+function promptKey(msg) {
+  const k = window.prompt(msg || "Admin API key (sent as x-api-key). Leave blank if auth is off:", getKey());
+  if (k === null) return false;        // cancelled
+  setKey(k.trim());
+  return true;
+}
+
+const api = (p, opts = {}) => {
+  const headers = Object.assign({}, opts.headers || {});
+  const key = getKey();
+  if (key) headers["x-api-key"] = key;
+  return fetch(p, Object.assign({}, opts, { headers })).then(async r => {
+    if (r.status === 401) {
+      if (promptKey("Admin key required or invalid — enter your x-api-key:")) {
+        return api(p, opts);           // retry once with the new key
+      }
+      throw new Error("unauthorized (no admin key)");
+    }
+    const body = r.headers.get("content-type")?.includes("json") ? await r.json() : await r.text();
+    if (!r.ok) throw new Error(typeof body === "string" ? body : (body.detail || JSON.stringify(body)));
+    return body;
+  });
+};
 const esc = s => (s ?? "").toString().replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const scoreColor = s => s >= 91 ? "var(--green)" : s >= 71 ? "var(--blue)" : s >= 31 ? "var(--amber)" : "var(--red)";
 const pill = (cls, txt) => `<span class="pill ${cls}">${esc(txt)}</span>`;
@@ -302,11 +329,12 @@ async function pullRecent() {
 }
 
 (async function init() {
+  setKey(getKey());  // paint the key badge from storage
   try {
-    const h = await api("/health");
+    const h = await api("/health");  // open route, no key needed
     document.getElementById("srcBadge").textContent = "ledger: " + h.ledger_source;
   } catch (_) {}
-  refresh();
+  refresh();         // protected routes — will prompt for the key on 401 if needed
 })();
 </script>
 </body>
