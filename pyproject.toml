@@ -18,7 +18,9 @@ dependencies = [
 ledger = ["ai-audit-ledger>=0.2.0"]
 # Needed only to load YAML evidence manifests (JSON works without it).
 manifest = ["pyyaml>=6.0"]
-dev = ["pytest>=8.0", "httpx>=0.27"]
+# DynamoDB backend for AWS.
+aws = ["boto3>=1.34"]
+dev = ["pytest>=8.0", "httpx>=0.27", "boto3>=1.34", "moto[dynamodb]>=5.0"]
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -27,6 +29,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["evidence_hub*"]
+
+[tool.setuptools.package-data]
+evidence_hub = ["static/*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

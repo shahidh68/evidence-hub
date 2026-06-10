@@ -36,14 +36,9 @@ def settings():
 
 
 @pytest.fixture
-def session(settings):
-    from evidence_hub.db import make_engine_and_session
-    _engine, SessionLocal = make_engine_and_session(settings)
-    s = SessionLocal()
-    try:
-        yield s
-    finally:
-        s.close()
+def store(settings):
+    from evidence_hub.store import make_store
+    return make_store(settings)
 
 
 @pytest.fixture

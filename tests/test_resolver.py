@@ -11,19 +11,19 @@ MANIFEST = os.path.join(os.path.dirname(__file__), "evidence-manifest.json")
 CLEAN_EVENT_ID = "11111111-1111-4111-8111-111111111111"
 
 
-def test_resolves_data_policy_prompt_gaps_for_spec_example(session, source):
-    service.evaluate_decision(session, source, EXAMPLE_EVENT_ID)
-    before = readiness.build_readiness(session, EXAMPLE_EVENT_ID)
+def test_resolves_data_policy_prompt_gaps_for_spec_example(store, source):
+    service.evaluate_decision(store, source, EXAMPLE_EVENT_ID)
+    before = readiness.build_readiness(store, EXAMPLE_EVENT_ID)
 
     resolver = ManifestResolver.from_path(MANIFEST)
-    applied = service.resolve_decision(session, resolver, EXAMPLE_EVENT_ID)
+    applied = service.resolve_decision(store, resolver, EXAMPLE_EVENT_ID)
 
     assert {"data_lineage_reference", "data_quality_check_reference",
             "policy_check_reference", "policy_version",
             "prompt_version_reference", "retention_classification",
             "privacy_classification"}.issubset(set(applied))
 
-    after = readiness.build_readiness(session, EXAMPLE_EVENT_ID)
+    after = readiness.build_readiness(store, EXAMPLE_EVENT_ID)
     assert after.audit_readiness_score > before.audit_readiness_score
     assert "data_lineage_reference" in after.resolved_gaps
     # Model gaps stay OPEN: the ledger logged reviewer metadata in model_version,
@@ -31,19 +31,19 @@ def test_resolves_data_policy_prompt_gaps_for_spec_example(session, source):
     assert "model_registry_reference" in after.open_gaps
 
 
-def test_resolves_model_gaps_for_clean_decision(session, source):
-    service.evaluate_decision(session, source, CLEAN_EVENT_ID)
+def test_resolves_model_gaps_for_clean_decision(store, source):
+    service.evaluate_decision(store, source, CLEAN_EVENT_ID)
     resolver = ManifestResolver.from_path(MANIFEST)
-    applied = service.resolve_decision(session, resolver, CLEAN_EVENT_ID)
+    applied = service.resolve_decision(store, resolver, CLEAN_EVENT_ID)
     assert {"model_registry_reference", "model_approval_reference"}.issubset(set(applied))
 
 
-def test_provenance_records_source_and_signature(session, source):
-    service.evaluate_decision(session, source, EXAMPLE_EVENT_ID)
+def test_provenance_records_source_and_signature(store, source):
+    service.evaluate_decision(store, source, EXAMPLE_EVENT_ID)
     resolver = ManifestResolver.from_path(MANIFEST)
-    service.resolve_decision(session, resolver, EXAMPLE_EVENT_ID)
+    service.resolve_decision(store, resolver, EXAMPLE_EVENT_ID)
 
-    updates = [u for u in registry.list_updates(session, EXAMPLE_EVENT_ID)
+    updates = [u for u in registry.list_updates(store, EXAMPLE_EVENT_ID)
                if u.gap == "policy_check_reference"]
     assert updates, "expected a resolved update for policy_check_reference"
     upd = updates[-1]
@@ -53,11 +53,11 @@ def test_provenance_records_source_and_signature(session, source):
     assert upd.artifact_refs.policy_check_reference == "opa:policy:loan-triage"
 
 
-def test_resolution_is_idempotent(session, source):
-    service.evaluate_decision(session, source, EXAMPLE_EVENT_ID)
+def test_resolution_is_idempotent(store, source):
+    service.evaluate_decision(store, source, EXAMPLE_EVENT_ID)
     resolver = ManifestResolver.from_path(MANIFEST)
-    first = service.resolve_decision(session, resolver, EXAMPLE_EVENT_ID)
-    second = service.resolve_decision(session, resolver, EXAMPLE_EVENT_ID)
+    first = service.resolve_decision(store, resolver, EXAMPLE_EVENT_ID)
+    second = service.resolve_decision(store, resolver, EXAMPLE_EVENT_ID)
     assert first and second == []
 
 

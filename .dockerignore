@@ -1,0 +1,13 @@
+.venv
+venv
+data
+infra
+tests
+.git
+.github
+.pytest_cache
+**/__pycache__
+*.pyc
+*.egg-info
+*.db
+run-preview.bat

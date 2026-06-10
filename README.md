@@ -163,5 +163,37 @@ connector is just another `Resolver` (`src/evidence_hub/resolvers/`) that
 
 ## Storage
 
-SQLite by default (`EVIDENCE_DB_URL=sqlite:///./data/evidence.db`). Models are
-SQLAlchemy, so switching to Postgres is a connection-string change.
+Pluggable via `EVIDENCE_STORE` (same pattern as `LEDGER_SOURCE` / resolvers):
+
+- `sqlite` (default) — SQLAlchemy, `EVIDENCE_DB_URL=sqlite:///./data/evidence.db`.
+  Swapping to Postgres is a connection-string change.
+- `dynamodb` — single-table, append-only (`EVIDENCE_TABLE_NAME`). Used in AWS.
+
+Both backends satisfy one `Store` interface (`src/evidence_hub/store/`) and are
+covered by the same contract tests (`tests/test_store.py`, DynamoDB via `moto`).
+
+## Deploy to AWS
+
+Single internal deployment that mirrors the ledger's serverless style — no VPC,
+no RDS, scale-to-zero, ~$0 idle:
+
+- **Lambda container** (FastAPI + [AWS Lambda Web Adapter](https://github.com/awslabs/aws-lambda-web-adapter))
+  behind a **Function URL**. App code is unchanged; the adapter proxies the event
+  to uvicorn on `:8080`. The `/ui/` dashboard is served by the Lambda.
+- **DynamoDB** single table (`EVIDENCE_STORE=dynamodb`).
+- **Secrets Manager** secret `{admin_api_key, ledger_read_key}`. The admin key
+  enforces `x-api-key` on every route (`auth.py`); the ledger read key lets the
+  Hub read your ledger over HTTPS (`LEDGER_SOURCE=live`, `AUDIT_API_URL`).
+
+Infra is CDK (`infra/cdk`, region `eu-west-1`), patterned on the ledger's stack.
+
+```bash
+cd infra/cdk
+npm install
+npx cdk deploy --context auditApiUrl=https://<your-ledger>.execute-api.eu-west-1.amazonaws.com/prod
+```
+
+After the first deploy, populate `EvidenceHubSecret` in the AWS Console with your
+admin key and a ledger **admin read key** (mapped to `"*"` in the ledger's
+`ReadKeyMapSecret`), then open the `FunctionUrl` output (`<url>ui/`) with the
+`x-api-key` header. Requires Docker running (CDK builds the image) and AWS creds.
