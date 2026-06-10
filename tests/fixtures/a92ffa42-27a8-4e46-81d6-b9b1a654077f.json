@@ -1,0 +1,45 @@
+{
+  "record": {
+    "event_id": "a92ffa42-27a8-4e46-81d6-b9b1a654077f",
+    "timestamp": "2026-05-31T19:36:37Z",
+    "tenant_id": "acme-corp",
+    "model_version": "human-reviewer:Shahid Hamid",
+    "system_prompt_hash": "c28dd58c4d34df556642a53695d8307a9274e7d7f7622540abff2acefee8fefa",
+    "input_data_hash": "f8a0ab77e0b746925deb35463476403897b06114b287b6b2a8809db86162a788",
+    "ai_decision_output": {
+      "outcome": "approved",
+      "reviewer": "Shahid Hamid",
+      "notes": "",
+      "based_on_triage_event_id": "837c7889-2e27-4d1e-a4f5-ed68dce337a8",
+      "based_on_risk_event_id": "a0d2f06c-1a89-4d9a-8a18-360ea2eefe9f"
+    },
+    "human_in_loop": true,
+    "sequence_no": 12
+  },
+  "tamper": {
+    "event_id": "a92ffa42-27a8-4e46-81d6-b9b1a654077f",
+    "integrity_verified": true,
+    "integrity_note": "DynamoDB and S3 Object Lock copies match.",
+    "current_record": {
+      "event_id": "a92ffa42-27a8-4e46-81d6-b9b1a654077f",
+      "timestamp": "2026-05-31T19:36:37Z",
+      "tenant_id": "acme-corp",
+      "model_version": "human-reviewer:Shahid Hamid",
+      "system_prompt_hash": "c28dd58c4d34df556642a53695d8307a9274e7d7f7622540abff2acefee8fefa",
+      "input_data_hash": "f8a0ab77e0b746925deb35463476403897b06114b287b6b2a8809db86162a788",
+      "ai_decision_output": {
+        "outcome": "approved",
+        "reviewer": "Shahid Hamid",
+        "notes": ""
+      },
+      "human_in_loop": true,
+      "sequence_no": 12
+    },
+    "archived_record": {
+      "event_id": "a92ffa42-27a8-4e46-81d6-b9b1a654077f",
+      "timestamp": "2026-05-31T19:36:37Z",
+      "tenant_id": "acme-corp",
+      "sequence_no": 12
+    }
+  }
+}

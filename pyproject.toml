@@ -1,0 +1,31 @@
+[project]
+name = "evidence-hub"
+version = "0.1.0"
+description = "AI Decision Evidence Hub — append-only evidence and compliance layer above the AI Audit Ledger"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "pydantic>=2.6",
+  "sqlalchemy>=2.0",
+  # The ledger read SDK. Installed editable from the sibling repo; see README.
+  # "ai-audit-ledger" is imported lazily so fixtures-mode/tests need no network deps.
+]
+
+[project.optional-dependencies]
+# Needed only for `live`/`sandbox` ledger sources (the SDK pulls in aiohttp).
+ledger = ["ai-audit-ledger>=0.2.0"]
+dev = ["pytest>=8.0", "httpx>=0.27"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["evidence_hub*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

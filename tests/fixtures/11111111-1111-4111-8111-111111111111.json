@@ -1,0 +1,30 @@
+{
+  "record": {
+    "event_id": "11111111-1111-4111-8111-111111111111",
+    "timestamp": "2026-06-01T09:00:00Z",
+    "tenant_id": "acme-corp",
+    "model_version": "claims-risk-model:12",
+    "system_prompt_hash": "aaaa1111e0b746925deb35463476403897b06114b287b6b2a8809db86162a788",
+    "input_data_hash": "bbbb2222e0b746925deb35463476403897b06114b287b6b2a8809db86162a788",
+    "ai_decision_output": {
+      "outcome": "declined"
+    },
+    "human_in_loop": false,
+    "sequence_no": 13
+  },
+  "tamper": {
+    "event_id": "11111111-1111-4111-8111-111111111111",
+    "integrity_verified": true,
+    "integrity_note": "DynamoDB and S3 Object Lock copies match.",
+    "current_record": {
+      "event_id": "11111111-1111-4111-8111-111111111111",
+      "timestamp": "2026-06-01T09:00:00Z",
+      "tenant_id": "acme-corp",
+      "model_version": "claims-risk-model:12"
+    },
+    "archived_record": {
+      "event_id": "11111111-1111-4111-8111-111111111111",
+      "timestamp": "2026-06-01T09:00:00Z"
+    }
+  }
+}
