@@ -14,13 +14,17 @@ Auth/RBAC and external connectors are intentionally out of scope for this MVP.
 
 from __future__ import annotations
 
+import os
 from contextlib import contextmanager
 from typing import Optional
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import audit_pack as audit_pack_mod
+from . import dashboard as dashboard_mod
 from . import graph as graph_mod
 from . import readiness as readiness_mod
 from . import registry, service
@@ -146,6 +150,35 @@ def create_app() -> FastAPI:
                             detail={"audit_pack_id": pack.audit_pack_id})
             session.commit()
             return pack
+
+    # ── dashboard data (spec section 14) ──
+    @app.get("/dashboard/decisions")
+    def dashboard_decisions():
+        with get_session() as session:
+            return dashboard_mod.decision_rows(session)
+
+    @app.get("/dashboard/gaps")
+    def dashboard_gaps():
+        with get_session() as session:
+            return dashboard_mod.gap_queue(session)
+
+    @app.get("/dashboard/models")
+    def dashboard_models():
+        with get_session() as session:
+            return dashboard_mod.model_rollup(session)
+
+    @app.get("/dashboard/audit-packs")
+    def dashboard_audit_packs():
+        with get_session() as session:
+            return dashboard_mod.audit_pack_rows(session)
+
+    # ── static dashboard UI ──
+    @app.get("/")
+    def root():
+        return RedirectResponse(url="/ui/")
+
+    static_dir = os.path.join(os.path.dirname(__file__), "static")
+    app.mount("/ui", StaticFiles(directory=static_dir, html=True), name="ui")
 
     return app
 

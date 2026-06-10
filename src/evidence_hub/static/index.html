@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Decision Evidence Hub</title>
+<style>
+  :root {
+    --bg: #0e1117; --panel: #161b22; --panel2: #1c232c; --border: #2a3340;
+    --text: #e6edf3; --muted: #8b97a6; --accent: #4c9aff;
+    --green: #3fb950; --amber: #d29922; --red: #f85149; --blue: #58a6ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  header {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 16px 24px; border-bottom: 1px solid var(--border); background: var(--panel);
+  }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  header h1 span { color: var(--muted); font-weight: 400; }
+  .grow { flex: 1; }
+  .src-badge {
+    font-size: 12px; padding: 3px 9px; border-radius: 20px;
+    background: var(--panel2); border: 1px solid var(--border); color: var(--muted);
+  }
+  input, button {
+    font: inherit; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--panel2); color: var(--text); padding: 7px 11px;
+  }
+  input { min-width: 320px; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.primary:hover { filter: brightness(1.1); }
+  .wrap { padding: 24px; max-width: 1280px; margin: 0 auto; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 22px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .card .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .tab { padding: 9px 16px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  tbody tr:hover { background: var(--panel); }
+  tbody tr.clickable { cursor: pointer; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .pill.complete { background: rgba(63,185,80,.15); color: var(--green); }
+  .pill.ready_with_gaps { background: rgba(88,166,255,.15); color: var(--blue); }
+  .pill.partial { background: rgba(210,153,34,.15); color: var(--amber); }
+  .pill.incomplete { background: rgba(248,81,73,.15); color: var(--red); }
+  .pill.verified { background: rgba(63,185,80,.15); color: var(--green); }
+  .pill.failed, .pill.unverified { background: rgba(248,81,73,.15); color: var(--red); }
+  .pill.unknown { background: var(--panel2); color: var(--muted); }
+  .pill.high { background: rgba(248,81,73,.15); color: var(--red); }
+  .pill.medium { background: rgba(210,153,34,.15); color: var(--amber); }
+  .pill.low { background: var(--panel2); color: var(--muted); }
+  .score { display: flex; align-items: center; gap: 8px; }
+  .bar { width: 60px; height: 6px; border-radius: 4px; background: var(--panel2); overflow: hidden; }
+  .bar > span { display: block; height: 100%; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .empty { padding: 40px; text-align: center; color: var(--muted); }
+  /* drawer */
+  #drawer { position: fixed; top: 0; right: 0; width: 540px; max-width: 92vw; height: 100%;
+    background: var(--panel); border-left: 1px solid var(--border); transform: translateX(100%);
+    transition: transform .2s ease; overflow-y: auto; z-index: 20; padding: 20px 22px; }
+  #drawer.open { transform: translateX(0); }
+  #drawer h2 { font-size: 15px; margin: 0 0 2px; }
+  .drawer-close { float: right; background: none; border: none; color: var(--muted); font-size: 20px; }
+  .kv { display: grid; grid-template-columns: 130px 1fr; gap: 4px 10px; margin: 12px 0; }
+  .kv div:nth-child(odd) { color: var(--muted); }
+  .gaplist { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 16px; }
+  .gaplist .chip { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; font-size: 12px; }
+  .gaplist .chip.resolved { color: var(--green); border-color: rgba(63,185,80,.4); }
+  .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 18px 0 6px; }
+  pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow: auto; font-size: 12px; max-height: 280px; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--panel2);
+    border: 1px solid var(--border); padding: 10px 18px; border-radius: 8px; z-index: 30; display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>AI Decision <span>/ Evidence Hub</span></h1>
+  <span class="src-badge" id="srcBadge">ledger: …</span>
+  <div class="grow"></div>
+  <input id="eventId" placeholder="ledger event_id to evaluate" />
+  <button class="primary" onclick="evaluateOne()">Evaluate</button>
+  <button onclick="pullRecent()" title="List recent ledger events and evaluate them">Pull recent</button>
+</header>
+
+<div class="wrap">
+  <div class="cards" id="cards"></div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="decisions" onclick="switchTab('decisions')">Decisions</div>
+    <div class="tab" data-tab="gaps" onclick="switchTab('gaps')">Gap queue</div>
+    <div class="tab" data-tab="models" onclick="switchTab('models')">Models</div>
+    <div class="tab" data-tab="packs" onclick="switchTab('packs')">Audit packs</div>
+  </div>
+
+  <div id="view"></div>
+</div>
+
+<div id="drawer"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const api = (p, opts) => fetch(p, opts).then(async r => {
+  const body = r.headers.get("content-type")?.includes("json") ? await r.json() : await r.text();
+  if (!r.ok) throw new Error(typeof body === "string" ? body : (body.detail || JSON.stringify(body)));
+  return body;
+});
+const esc = s => (s ?? "").toString().replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const scoreColor = s => s >= 91 ? "var(--green)" : s >= 71 ? "var(--blue)" : s >= 31 ? "var(--amber)" : "var(--red)";
+const pill = (cls, txt) => `<span class="pill ${cls}">${esc(txt)}</span>`;
+const scoreBar = s => `<div class="score"><div class="bar"><span style="width:${s}%;background:${scoreColor(s)}"></span></div><b>${s}</b></div>`;
+
+let state = { tab: "decisions", decisions: [], gaps: [], models: [], packs: [] };
+
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.display = "block";
+  clearTimeout(t._t); t._t = setTimeout(() => t.style.display = "none", 3000);
+}
+
+async function refresh() {
+  const [decisions, gaps, models, packs] = await Promise.all([
+    api("/dashboard/decisions"), api("/dashboard/gaps"),
+    api("/dashboard/models"), api("/dashboard/audit-packs"),
+  ]);
+  Object.assign(state, { decisions, gaps, models, packs });
+  renderCards(); renderTab();
+}
+
+function renderCards() {
+  const d = state.decisions;
+  const avg = d.length ? Math.round(d.reduce((a, x) => a + x.audit_readiness_score, 0) / d.length) : 0;
+  const cards = [
+    ["Decisions", d.length],
+    ["Avg readiness", avg],
+    ["Open gaps", state.gaps.length],
+    ["Audit packs", state.packs.length],
+  ];
+  document.getElementById("cards").innerHTML = cards.map(([l, v]) =>
+    `<div class="card"><div class="label">${l}</div><div class="value">${v}</div></div>`).join("");
+}
+
+function switchTab(t) {
+  state.tab = t;
+  document.querySelectorAll(".tab").forEach(el => el.classList.toggle("active", el.dataset.tab === t));
+  renderTab();
+}
+
+function renderTab() {
+  const el = document.getElementById("view");
+  const r = { decisions: renderDecisions, gaps: renderGaps, models: renderModels, packs: renderPacks }[state.tab];
+  el.innerHTML = r();
+}
+
+function renderDecisions() {
+  if (!state.decisions.length) return `<div class="empty">No evaluated decisions yet. Enter a ledger <b>event_id</b> above and click Evaluate, or use <b>Pull recent</b>.</div>`;
+  const rows = state.decisions.map(d => `
+    <tr class="clickable" onclick="openDrawer('${esc(d.decision_id)}')">
+      <td class="mono">${esc(d.decision_id.slice(0, 8))}…</td>
+      <td>${esc(d.outcome || "—")}</td>
+      <td>${esc(d.model_version)}</td>
+      <td>${pill(d.integrity_status, d.integrity_status)}</td>
+      <td>${scoreBar(d.audit_readiness_score)}</td>
+      <td>${pill(d.current_evidence_status, d.current_evidence_status.replace(/_/g, " "))}</td>
+      <td>${d.open_gaps}</td>
+      <td>${pill(d.risk_tier, d.risk_tier)}</td>
+    </tr>`).join("");
+  return `<table><thead><tr><th>Decision</th><th>Outcome</th><th>Model</th><th>Integrity</th><th>Readiness</th><th>Status</th><th>Open gaps</th><th>Risk</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderGaps() {
+  if (!state.gaps.length) return `<div class="empty">No open gaps.</div>`;
+  const rows = state.gaps.map(g => `
+    <tr class="clickable" onclick="openDrawer('${esc(g.decision_id)}')">
+      <td><b>${esc(g.gap)}</b></td>
+      <td class="mono">${esc(g.decision_id.slice(0, 8))}…</td>
+      <td>${esc(g.owner)}</td>
+      <td>${pill(g.priority, g.priority)}</td>
+      <td>${pill(g.status === "open" ? "unknown" : "ready_with_gaps", g.status.replace(/_/g, " "))}</td>
+      <td>${esc(g.due_date || "—")}</td>
+      <td>${pill(g.risk_tier, g.risk_tier)}</td>
+    </tr>`).join("");
+  return `<table><thead><tr><th>Gap</th><th>Decision</th><th>Owner</th><th>Priority</th><th>Status</th><th>Due</th><th>Risk</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderModels() {
+  if (!state.models.length) return `<div class="empty">No models yet.</div>`;
+  const rows = state.models.map(m => `
+    <tr>
+      <td>${esc(m.model_version)}</td>
+      <td>${m.decisions}</td>
+      <td>${scoreBar(m.avg_readiness_score)}</td>
+      <td>${m.open_gaps}</td>
+      <td>${m.integrity_verified} / ${m.decisions}</td>
+    </tr>`).join("");
+  return `<table><thead><tr><th>Model version</th><th>Decisions</th><th>Avg readiness</th><th>Open gaps</th><th>Integrity verified</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderPacks() {
+  if (!state.packs.length) return `<div class="empty">No audit packs generated yet. Open a decision and click <b>Generate audit pack</b>.</div>`;
+  const rows = state.packs.map(p => `
+    <tr>
+      <td class="mono">${esc(p.audit_pack_id)}</td>
+      <td class="mono">${esc(p.decision_id.slice(0, 8))}…</td>
+      <td>${esc(p.scope)}</td>
+      <td>${esc(p.format)}</td>
+      <td>${pill(p.readiness_status, (p.readiness_status || "").replace(/_/g, " "))}</td>
+      <td>${esc(p.created_at)}</td>
+      <td>${p.sections.length} sections</td>
+    </tr>`).join("");
+  return `<table><thead><tr><th>Pack</th><th>Decision</th><th>Scope</th><th>Format</th><th>Readiness</th><th>Created</th><th>Contents</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function openDrawer(id) {
+  const drawer = document.getElementById("drawer");
+  drawer.classList.add("open");
+  drawer.innerHTML = `<button class="drawer-close" onclick="closeDrawer()">×</button><div class="muted">Loading…</div>`;
+  try {
+    const [view, edges] = await Promise.all([
+      api(`/evidence/readiness/${id}`), api(`/evidence/graph/${id}`),
+    ]);
+    const open = view.open_gaps.map(g => `<span class="chip">${esc(g)}</span>`).join("") || `<span class="muted">none</span>`;
+    const resolved = view.resolved_gaps.map(g => `<span class="chip resolved">✓ ${esc(g)}</span>`).join("") || `<span class="muted">none</span>`;
+    const edgeRows = edges.map(e => `<div class="mono">${esc(e.relation)} → ${esc(e.to)}</div>`).join("");
+    drawer.innerHTML = `
+      <button class="drawer-close" onclick="closeDrawer()">×</button>
+      <h2>Decision</h2>
+      <div class="mono">${esc(id)}</div>
+      <div class="kv">
+        <div>Readiness</div><div>${scoreBar(view.audit_readiness_score)}</div>
+        <div>Status</div><div>${pill(view.current_evidence_status, view.current_evidence_status.replace(/_/g, " "))}</div>
+        <div>Integrity</div><div>${pill(view.integrity_status, view.integrity_status)}</div>
+        <div>Last updated</div><div class="mono">${esc(view.last_updated)}</div>
+      </div>
+      <div class="section-title">Open gaps</div><div class="gaplist">${open}</div>
+      <div class="section-title">Resolved gaps</div><div class="gaplist">${resolved}</div>
+      <div class="section-title">Evidence graph</div>${edgeRows || '<div class="muted">no edges</div>'}
+      <div style="margin-top:20px"><button class="primary" onclick="genPack('${esc(id)}')">Generate audit pack</button></div>
+      <div id="packOut"></div>`;
+  } catch (e) {
+    drawer.innerHTML = `<button class="drawer-close" onclick="closeDrawer()">×</button><div class="empty">${esc(e.message)}</div>`;
+  }
+}
+function closeDrawer() { document.getElementById("drawer").classList.remove("open"); }
+
+async function genPack(id) {
+  try {
+    const pack = await api("/audit-pack", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ scope: "per_decision", decision_id: id, format: "json" }),
+    });
+    document.getElementById("packOut").innerHTML =
+      `<div class="section-title">Audit pack ${esc(pack.audit_pack_id)}</div><pre>${esc(JSON.stringify(pack.sections, null, 2))}</pre>`;
+    toast("Audit pack generated");
+    refresh();
+  } catch (e) { toast(e.message); }
+}
+
+async function evaluateOne() {
+  const id = document.getElementById("eventId").value.trim();
+  if (!id) return toast("Enter an event_id");
+  try {
+    await api("/evidence/evaluate", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ event_id: id }),
+    });
+    toast("Evaluated " + id.slice(0, 8) + "…");
+    document.getElementById("eventId").value = "";
+    refresh();
+  } catch (e) { toast(e.message); }
+}
+
+async function pullRecent() {
+  try {
+    toast("Fetching recent ledger events…");
+    const res = await api("/ledger/decisions?limit=10");
+    const items = res.items || [];
+    if (!items.length) return toast("No ledger events found");
+    let ok = 0;
+    for (const it of items) {
+      try {
+        await api("/evidence/evaluate", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ event_id: it.event_id }),
+        });
+        ok++;
+      } catch (_) { /* skip */ }
+    }
+    toast(`Evaluated ${ok} of ${items.length} ledger events`);
+    refresh();
+  } catch (e) { toast(e.message); }
+}
+
+(async function init() {
+  try {
+    const h = await api("/health");
+    document.getElementById("srcBadge").textContent = "ledger: " + h.ledger_source;
+  } catch (_) {}
+  refresh();
+})();
+</script>
+</body>
+</html>

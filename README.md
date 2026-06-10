@@ -25,10 +25,11 @@ remediation state lives in the Hub's own append-only store.
 - **Builds** an evidence graph linking the decision to triage/risk events,
   its archive, and attached artifacts.
 - **Generates** a per-decision JSON audit pack.
+- **Serves** a dashboard (decisions, gap queue, model rollup, audit packs) at `/ui/`.
 
 Out of scope for this MVP (deferred): external connectors (MLflow, Great
-Expectations, OPA, Evidently, Atlas, Jira), PDF packs, model-/date-/incident-
-scoped packs, SSO/RBAC, and a dashboard UI.
+Expectations, OPA, Evidently, Atlas, Jira), PDF packs, and model-/date-/incident-
+scoped packs, plus SSO/RBAC.
 
 ## Architecture
 
@@ -79,7 +80,9 @@ LEDGER_SOURCE=fixtures uvicorn evidence_hub.api:app --reload   # set env via you
 LEDGER_SOURCE=sandbox uvicorn evidence_hub.api:app --reload
 ```
 
-Then explore at `http://127.0.0.1:8000/docs`.
+Then open the **dashboard** at `http://127.0.0.1:8000/ui/` (or the API docs at
+`/docs`). In `fixtures` mode, enter a fixture `event_id` and click Evaluate; in
+`sandbox`/`live` mode, click **Pull recent** to evaluate recent ledger events.
 
 ### Example
 
@@ -98,6 +101,8 @@ curl -X POST localhost:8000/evidence/evaluate \
 | GET | `/evidence/readiness/{decision_id}` | Current readiness roll-up |
 | GET | `/evidence/graph/{decision_id}` | Evidence graph edges |
 | POST | `/audit-pack` | Per-decision JSON audit pack |
+| GET | `/dashboard/decisions` `/dashboard/gaps` `/dashboard/models` `/dashboard/audit-packs` | Dashboard roll-ups |
+| GET | `/ui/` | Dashboard UI (static, vanilla JS) |
 | GET | `/ledger/decisions` | Read-only passthrough to browse the ledger |
 | GET | `/health` | Liveness + active ledger source |
 
