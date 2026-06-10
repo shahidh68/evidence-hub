@@ -17,6 +17,10 @@ SANDBOX_TENANT = "sandbox-public"
 
 _DEFAULT_DB_URL = "sqlite:///./data/evidence.db"
 
+# The deployed AI Audit Ledger dashboard (CloudFront). Override with
+# EVIDENCE_LEDGER_DASHBOARD_URL; blank string hides the cross-link.
+_DEFAULT_LEDGER_DASHBOARD_URL = "https://d2pfirb2397ixy.cloudfront.net"
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -30,6 +34,7 @@ class Settings:
     table_name: str | None = None      # DynamoDB table name (store=dynamodb)
     admin_api_key: str | None = None   # if set, x-api-key is enforced
     secret_arn: str | None = None      # Secrets Manager ARN (AWS): admin + ledger keys
+    ledger_dashboard_url: str = ""     # link shown in the Hub dashboard header
 
 
 def get_settings() -> Settings:
@@ -76,4 +81,6 @@ def get_settings() -> Settings:
         table_name=(os.environ.get("EVIDENCE_TABLE_NAME", "").strip() or None),
         admin_api_key=admin_api_key,
         secret_arn=secret_arn,
+        ledger_dashboard_url=os.environ.get(
+            "EVIDENCE_LEDGER_DASHBOARD_URL", _DEFAULT_LEDGER_DASHBOARD_URL).strip(),
     )

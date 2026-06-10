@@ -88,6 +88,7 @@
   <h1>AI Decision <span>/ Evidence Hub</span></h1>
   <span class="src-badge" id="srcBadge">ledger: …</span>
   <span class="src-badge" id="keyBadge" onclick="promptKey()" style="cursor:pointer" title="Set / change admin API key">🔑 no key</span>
+  <a class="src-badge" id="ledgerLink" href="#" target="_blank" rel="noopener" style="display:none;text-decoration:none" title="Open the AI Audit Ledger dashboard">Ledger dashboard ↗</a>
   <div class="grow"></div>
   <input id="eventId" placeholder="ledger event_id to evaluate" />
   <button class="primary" onclick="evaluateOne()">Evaluate</button>
@@ -333,6 +334,11 @@ async function pullRecent() {
   try {
     const h = await api("/health");  // open route, no key needed
     document.getElementById("srcBadge").textContent = "ledger: " + h.ledger_source;
+    if (h.ledger_dashboard_url) {
+      const link = document.getElementById("ledgerLink");
+      link.href = h.ledger_dashboard_url;
+      link.style.display = "";
+    }
   } catch (_) {}
   refresh();         // protected routes — will prompt for the key on 401 if needed
 })();

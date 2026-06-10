@@ -82,7 +82,8 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health():
         return {"status": "ok", "ledger_source": settings.ledger_source,
-                "store": settings.store}
+                "store": settings.store,
+                "ledger_dashboard_url": settings.ledger_dashboard_url}
 
     @app.get("/ledger/decisions", dependencies=protected)
     def ledger_decisions(from_ts: Optional[str] = None, to_ts: Optional[str] = None,

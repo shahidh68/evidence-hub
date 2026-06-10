@@ -1,8 +1,12 @@
 # AI Decision Evidence Hub
 
+Part of the **AI Audit Ledger** family ([audit-ledger](https://github.com/shahidh68/audit-ledger)
+· [audit-ledger-mcp](https://github.com/shahidh68/audit-ledger-mcp) · **evidence-hub**).
+
 An append-only **evidence and compliance layer** that sits *above* the
-[AI Audit Ledger](../ai-audit-ledger). The ledger is the immutable record of
-*what happened* at decision time. The Evidence Hub answers the next question:
+[AI Audit Ledger](https://github.com/shahidh68/audit-ledger). The ledger is the
+immutable record of *what happened* at decision time. The Evidence Hub answers
+the next question:
 
 > Does this decision have the evidence it needs to survive an audit — what's
 > present, what's missing, who owns the gaps, and what's been remediated?
@@ -11,7 +15,13 @@ The Hub **only reads** the ledger. It never modifies ledger records (the ledger
 stays the canonical, tamper-evident source of truth). All evidence and
 remediation state lives in the Hub's own append-only store.
 
-## What it does (MVP)
+**Runs locally** (FastAPI + SQLite) and **deploys to AWS** serverless (Lambda +
+DynamoDB, no VPC, scale-to-zero) — see [Deploy to AWS](#deploy-to-aws). A
+plain-English overview of the AWS build is in
+[`WHAT-WE-BUILT-TODAY.md`](WHAT-WE-BUILT-TODAY.md); an editable architecture
+diagram is in [`evidence-hub-architecture.drawio`](evidence-hub-architecture.drawio).
+
+## What it does
 
 - **Reads** AI decision events from the ledger (live, sandbox, or local fixtures).
 - **Normalizes** the minimal ledger record — including fields buried inside the
@@ -25,11 +35,15 @@ remediation state lives in the Hub's own append-only store.
 - **Builds** an evidence graph linking the decision to triage/risk events,
   its archive, and attached artifacts.
 - **Generates** a per-decision JSON audit pack.
-- **Serves** a dashboard (decisions, gap queue, model rollup, audit packs) at `/ui/`.
+- **Serves** a single dashboard (decisions, gap queue, model rollup, audit packs)
+  at `/ui/`, with a cross-link to the ledger's own dashboard.
+- **Auto-fills static evidence** from a repo manifest (resolver).
+- **Deploys to AWS** as a Lambda container + DynamoDB behind a Function URL,
+  with admin `x-api-key` auth.
 
-Out of scope for this MVP (deferred): external connectors (MLflow, Great
-Expectations, OPA, Evidently, Atlas, Jira), PDF packs, and model-/date-/incident-
-scoped packs, plus SSO/RBAC.
+Out of scope (deferred): external connectors (MLflow, Great Expectations, OPA,
+Evidently, Atlas, Jira), PDF packs, model-/date-/incident-scoped packs, and
+multi-tenant SaaS auth.
 
 ## Architecture
 
