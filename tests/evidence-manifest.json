@@ -1,0 +1,24 @@
+{
+  "models": {
+    "claims-risk-model:12": {
+      "model_name": "claims-risk-model",
+      "model_registry_reference": "mlflow:model:claims-risk-model:12",
+      "model_approval_reference": "change-ticket:CR-4471"
+    }
+  },
+  "prompts": {
+    "c28dd58c4d34df556642a53695d8307a9274e7d7f7622540abff2acefee8fefa": {
+      "prompt_version_reference": "git:prompts/triage.md@a1b2c3"
+    }
+  },
+  "tenants": {
+    "acme-corp": {
+      "data_lineage_reference": "atlas:lineage:dataset_12345",
+      "data_quality_check_reference": "great_expectations:run_67890",
+      "privacy_classification": "pii-pseudonymised",
+      "retention_classification": "7y",
+      "policy_check_reference": "opa:policy:loan-triage",
+      "policy_version": "2026.05"
+    }
+  }
+}

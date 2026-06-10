@@ -25,6 +25,7 @@ class Settings:
     audit_read_key: str
     db_url: str
     fixtures_dir: str
+    manifest_path: str | None = None   # repo evidence manifest, if configured
 
 
 def get_settings() -> Settings:
@@ -52,4 +53,5 @@ def get_settings() -> Settings:
         audit_read_key=read_key,
         db_url=os.environ.get("EVIDENCE_DB_URL", _DEFAULT_DB_URL),
         fixtures_dir=os.path.abspath(fixtures_dir),
+        manifest_path=(os.environ.get("EVIDENCE_MANIFEST_PATH", "").strip() or None),
     )

@@ -31,6 +31,7 @@ from . import registry, service
 from .config import get_settings
 from .db import make_engine_and_session, write_audit_log
 from .ledger_source import LedgerError, make_source
+from .resolvers import make_resolver
 from .schemas import (
     AuditPack,
     EvidenceEvaluation,
@@ -58,14 +59,20 @@ class AuditPackRequest(BaseModel):
     format: str = "json"
 
 
+class ResolveRequest(BaseModel):
+    decision_id: str
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     source = make_source(settings)
+    resolver = make_resolver(settings)
     _engine, SessionLocal = make_engine_and_session(settings)
 
     app = FastAPI(title="AI Decision Evidence Hub", version="0.1.0")
     app.state.settings = settings
     app.state.source = source
+    app.state.resolver = resolver
     app.state.SessionLocal = SessionLocal
 
     @contextmanager
@@ -93,9 +100,25 @@ def create_app() -> FastAPI:
     def evaluate(req: EvaluateRequest):
         with get_session() as session:
             try:
-                return service.evaluate_decision(session, source, req.event_id)
+                return service.evaluate_decision(session, source, req.event_id,
+                                                 resolver=resolver)
             except LedgerError as exc:
                 raise HTTPException(status_code=404, detail=str(exc))
+
+    @app.post("/evidence/resolve")
+    def resolve(req: ResolveRequest):
+        if resolver is None:
+            raise HTTPException(
+                status_code=400,
+                detail="no resolver configured; set EVIDENCE_MANIFEST_PATH",
+            )
+        with get_session() as session:
+            try:
+                applied = service.resolve_decision(session, resolver, req.decision_id)
+            except ValueError as exc:
+                raise HTTPException(status_code=404, detail=str(exc))
+            return {"decision_id": req.decision_id, "resolved": applied,
+                    "source": resolver.source_id(), "signature": resolver.signature()}
 
     @app.post("/evidence/evidence-update", response_model=EvidenceUpdateResponse)
     def evidence_update(req: EvidenceUpdateRequest):

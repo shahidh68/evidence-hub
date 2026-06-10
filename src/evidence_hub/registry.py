@@ -52,9 +52,15 @@ def current_gap_status(session, decision_id: str, gap: str) -> UpdateStatus | No
     return UpdateStatus(rows[0].status)
 
 
-def record_update(session, req: EvidenceUpdateRequest) -> EvidenceUpdate:
-    """Append a new evidence update, validating the lifecycle if it targets a gap."""
-    if req.gap:
+def record_update(session, req: EvidenceUpdateRequest,
+                  bypass_lifecycle: bool = False) -> EvidenceUpdate:
+    """Append a new evidence update, validating the lifecycle if it targets a gap.
+
+    bypass_lifecycle=True is for automated authoritative attaches (resolvers and
+    connectors): they don't *transition* a gap through a human workflow, they
+    independently attach verified evidence, so the transition rules don't apply.
+    """
+    if req.gap and not bypass_lifecycle:
         prev = current_gap_status(session, req.decision_id, req.gap)
         allowed = _ALLOWED.get(prev, set())
         if req.status not in allowed:

@@ -101,6 +101,7 @@ curl -X POST localhost:8000/evidence/evaluate \
 | GET | `/evidence/readiness/{decision_id}` | Current readiness roll-up |
 | GET | `/evidence/graph/{decision_id}` | Evidence graph edges |
 | POST | `/audit-pack` | Per-decision JSON audit pack |
+| POST | `/evidence/resolve` | Auto-fill resolvable gaps from the configured resolver |
 | GET | `/dashboard/decisions` `/dashboard/gaps` `/dashboard/models` `/dashboard/audit-packs` | Dashboard roll-ups |
 | GET | `/ui/` | Dashboard UI (static, vanilla JS) |
 | GET | `/ledger/decisions` | Read-only passthrough to browse the ledger |
@@ -117,6 +118,48 @@ Tests run with `LEDGER_SOURCE=fixtures` (fully offline). They assert the spec's
 worked example scores `partial`, the `model_version` misuse is flagged, the
 registry is append-only with enforced transitions, and readiness improves as
 gaps resolve.
+
+## Resolving evidence from a repo manifest
+
+Most missing references are *static* properties of a model, dataset, policy, or
+prompt — not facts unique to one decision. Rather than re-instrument every
+customer app, the customer keeps an **evidence manifest** in their repo and the
+Hub resolves references from it, joining only on fields the ledger already
+records: `model_version`, `system_prompt_hash`, and `tenant_id`.
+
+```yaml
+# evidence-manifest.yaml  (JSON also supported; YAML needs the [manifest] extra)
+models:
+  "claims-risk-model:12":
+    model_name: claims-risk-model
+    model_registry_reference: mlflow:model:claims-risk-model:12
+    model_approval_reference: change-ticket:CR-4471
+prompts:                       # keyed by the system_prompt_hash already in the ledger
+  "c28dd58c...fefa":
+    prompt_version_reference: git:prompts/triage.md@a1b2c3
+tenants:
+  acme-corp:
+    data_lineage_reference: atlas:lineage:dataset_12345
+    data_quality_check_reference: great_expectations:run_67890
+    privacy_classification: pii-pseudonymised
+    retention_classification: 7y
+    policy_check_reference: opa:policy:loan-triage
+    policy_version: "2026.05"
+```
+
+Point it at the Hub with `EVIDENCE_MANIFEST_PATH`. When set, `/evidence/evaluate`
+auto-resolves; you can also call `/evidence/resolve` explicitly.
+
+Each resolved reference becomes an **append-only `verified` evidence update**
+tagged with the manifest's source and a `sha256` content signature (its
+version pin), so resolution never touches the ledger and stays fully auditable.
+Resolution is idempotent and skips gaps a human already closed.
+
+What a manifest *cannot* fill — facts unique to one decision's instant
+(`monitoring_snapshot_reference`, `drift_status`, the specific `policy_result`
+that fired) — is left for richer decision-time logging or a future connector. A
+connector is just another `Resolver` (`src/evidence_hub/resolvers/`) that
+*verifies* what the manifest *asserts*.
 
 ## Storage
 
