@@ -16,10 +16,15 @@ stays the canonical, tamper-evident source of truth). All evidence and
 remediation state lives in the Hub's own append-only store.
 
 **Runs locally** (FastAPI + SQLite) and **deploys to AWS** serverless (Lambda +
-DynamoDB, no VPC, scale-to-zero) — see [Deploy to AWS](#deploy-to-aws). A
-plain-English overview of the AWS build is in
-[`WHAT-WE-BUILT-TODAY.md`](WHAT-WE-BUILT-TODAY.md); an editable architecture
-diagram is in [`evidence-hub-architecture.drawio`](evidence-hub-architecture.drawio).
+DynamoDB, no VPC, scale-to-zero) — see [Deploy to AWS](#deploy-to-aws).
+
+### Documentation
+| Doc | Audience |
+|---|---|
+| [`docs/CUSTOMER-GUIDE.md`](docs/CUSTOMER-GUIDE.md) | Compliance / risk / audit — using the dashboard, reading scores & gaps, audit packs |
+| [`docs/ADMIN-RUNBOOK.md`](docs/ADMIN-RUNBOOK.md) | Operators — deploy/redeploy, key rotation, monitoring, troubleshooting, teardown |
+| [`WHAT-WE-BUILT-TODAY.md`](WHAT-WE-BUILT-TODAY.md) | Plain-English overview of the AWS build |
+| [`evidence-hub-architecture.drawio`](evidence-hub-architecture.drawio) | Editable architecture diagram (`tools/generate-architecture-diagram.py`) |
 
 ## What it does
 
