@@ -25,7 +25,7 @@ It **only reads** the ledger — it never changes a recorded decision.
 
 **The family:**
 [audit-ledger](https://github.com/shahidh68/audit-ledger) (what happened) ·
-[audit-ledger-mcp](https://github.com/shahidh68/audit-ledger-mcp) (how agents write to it) ·
+[audit-ledger-mcp](https://www.npmjs.com/package/audit-ledger-mcp) (how agents write to it · `npx -y audit-ledger-mcp`) ·
 **evidence-hub** (audit-readiness).
 
 ---

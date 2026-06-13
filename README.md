@@ -1,7 +1,7 @@
 # AI Decision Evidence Hub
 
 Part of the **AI Audit Ledger** family ([audit-ledger](https://github.com/shahidh68/audit-ledger)
-· [audit-ledger-mcp](https://github.com/shahidh68/audit-ledger-mcp) · **evidence-hub**).
+· [audit-ledger-mcp](https://www.npmjs.com/package/audit-ledger-mcp) · **evidence-hub**).
 
 An append-only **evidence and compliance layer** that sits *above* the
 [AI Audit Ledger](https://github.com/shahidh68/audit-ledger). The ledger is the
