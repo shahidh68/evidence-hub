@@ -40,7 +40,8 @@ Paste the key from your admin. It's stored in your browser only and sent with
 every request. The badge then reads **🔑 key set**.
 
 To jump to the raw ledger records, use the **"Ledger dashboard ↗"** link in the
-header.
+header — there you can browse records, verify tamper-evidence, and check whether
+any record has been deleted (completeness).
 
 ---
 
