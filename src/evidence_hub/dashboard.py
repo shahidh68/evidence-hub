@@ -6,20 +6,22 @@ views the dashboard shows: decisions, gap queue, model-level, and audit packs.
 
 from __future__ import annotations
 
+from typing import Optional
+
 from . import catalog, readiness
 from .store import Store
 
 _PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 
-def evaluated_decision_ids(store: Store) -> list[str]:
-    return store.list_decision_ids()
+def evaluated_decision_ids(store: Store, tenant: Optional[str] = None) -> list[str]:
+    return store.list_decision_ids(tenant)
 
 
-def decision_rows(store: Store) -> list[dict]:
+def decision_rows(store: Store, tenant: Optional[str] = None) -> list[dict]:
     """Decision-level view (spec 14.1). Most at-risk (lowest score) first."""
     out: list[dict] = []
-    for did in evaluated_decision_ids(store):
+    for did in evaluated_decision_ids(store, tenant):
         ev = readiness.latest_evaluation(store, did)
         view = readiness.build_readiness(store, did)
         norm = store.latest_normalized(did)
@@ -44,10 +46,10 @@ def decision_rows(store: Store) -> list[dict]:
     return out
 
 
-def gap_queue(store: Store) -> list[dict]:
+def gap_queue(store: Store, tenant: Optional[str] = None) -> list[dict]:
     """Open gaps across all decisions (spec 14.2). High priority first."""
     items: list[dict] = []
-    for did in evaluated_decision_ids(store):
+    for did in evaluated_decision_ids(store, tenant):
         ev = readiness.latest_evaluation(store, did)
         view = readiness.build_readiness(store, did)
         if ev is None or view is None:
@@ -69,10 +71,10 @@ def gap_queue(store: Store) -> list[dict]:
     return items
 
 
-def model_rollup(store: Store) -> list[dict]:
+def model_rollup(store: Store, tenant: Optional[str] = None) -> list[dict]:
     """Model-level view (spec 14.3). Lowest average readiness first."""
     groups: dict[str, dict] = {}
-    for did in evaluated_decision_ids(store):
+    for did in evaluated_decision_ids(store, tenant):
         view = readiness.build_readiness(store, did)
         norm = store.latest_normalized(did)
         if view is None:
@@ -100,7 +102,7 @@ def model_rollup(store: Store) -> list[dict]:
     return out
 
 
-def audit_pack_rows(store: Store) -> list[dict]:
+def audit_pack_rows(store: Store, tenant: Optional[str] = None) -> list[dict]:
     """Generated audit packs (spec 14.4). Newest first."""
     return [{
         "audit_pack_id": p.audit_pack_id,
@@ -110,4 +112,4 @@ def audit_pack_rows(store: Store) -> list[dict]:
         "created_at": p.generated_at,
         "readiness_status": p.readiness_status.value,
         "sections": list(p.sections.keys()),
-    } for p in store.list_packs()]
+    } for p in store.list_packs(tenant)]

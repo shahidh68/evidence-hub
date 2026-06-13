@@ -45,6 +45,45 @@ def test_integrity_block_from_tamper_result():
 def test_clean_ai_decision_has_no_model_version_issue():
     record, tamper = _load("11111111-1111-4111-8111-111111111111")
     event, issues = normalize(record, tamper)
+    assert event.model.model_name == "claims-risk-model"
     assert event.model.model_version == "claims-risk-model:12"
     assert not any(i.field == "model_version" for i in issues)
     assert event.event_type == "ai_decision"
+
+
+def test_explicit_model_name_overrides_derived_name():
+    record, tamper = _load("11111111-1111-4111-8111-111111111111")
+    record["ai_decision_output"]["model_name"] = "consumer-credit-risk"
+    event, issues = normalize(record, tamper)
+
+    assert event.model.model_name == "consumer-credit-risk"
+    assert event.model.model_version == "claims-risk-model:12"
+    assert not any(i.field == "model_version" for i in issues)
+
+
+def test_extracts_governance_references_from_ai_decision_output():
+    record, tamper = _load("11111111-1111-4111-8111-111111111111")
+    record["ai_decision_output"].update({
+        "policy_check_reference": "opa:policy:loan-triage",
+        "policy_result": "pass",
+        "policy_version": "2026.06",
+        "monitoring_snapshot_reference": "monitoring:snapshot:2026-06-13",
+        "drift_status": "within_threshold",
+        "performance_status": "within_threshold",
+        "fairness_test_reference": "fairness:test:run-42",
+        "override_flag": False,
+        "retention_classification": "7y",
+    })
+
+    event, issues = normalize(record, tamper)
+
+    assert event.controls.policy_check_reference == "opa:policy:loan-triage"
+    assert event.controls.policy_result == "pass"
+    assert event.controls.policy_version == "2026.06"
+    assert event.controls.monitoring_snapshot_reference == "monitoring:snapshot:2026-06-13"
+    assert event.controls.drift_status == "within_threshold"
+    assert event.controls.performance_status == "within_threshold"
+    assert event.controls.fairness_test_reference == "fairness:test:run-42"
+    assert event.controls.override_flag is False
+    assert event.controls.retention_classification == "7y"
+    assert not any(i.field == "model_version" for i in issues)

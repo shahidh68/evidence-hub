@@ -58,6 +58,7 @@ class EvidenceEvaluationRow(Base):
     evaluation_id: Mapped[str] = mapped_column(String, index=True)
     decision_id: Mapped[str] = mapped_column(String, index=True)
     event_id: Mapped[str] = mapped_column(String, index=True)
+    tenant_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
@@ -78,6 +79,7 @@ class AuditPackRow(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     audit_pack_id: Mapped[str] = mapped_column(String, index=True)
     decision_id: Mapped[str] = mapped_column(String, index=True)
+    tenant_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
@@ -132,7 +134,8 @@ class SqlStore:
         with self._Session() as s:
             s.add(EvidenceEvaluationRow(
                 evaluation_id=evaluation.evaluation_id, decision_id=evaluation.decision_id,
-                event_id=evaluation.event_id, payload=evaluation.model_dump(mode="json")))
+                event_id=evaluation.event_id, tenant_id=evaluation.tenant_id,
+                payload=evaluation.model_dump(mode="json")))
             s.commit()
 
     def add_update(self, update: EvidenceUpdate):
@@ -146,7 +149,7 @@ class SqlStore:
     def add_pack(self, pack: AuditPack):
         with self._Session() as s:
             s.add(AuditPackRow(audit_pack_id=pack.audit_pack_id, decision_id=pack.decision_id,
-                               payload=pack.model_dump(mode="json")))
+                               tenant_id=pack.tenant_id, payload=pack.model_dump(mode="json")))
             s.commit()
 
     def add_audit_log(self, action, decision_id=None, actor=None, detail=None):
@@ -183,12 +186,17 @@ class SqlStore:
                     .order_by(EvidenceUpdateRow.id.asc()).all())
             return [EvidenceUpdate.model_validate(r.payload) for r in rows]
 
-    def list_packs(self):
+    def list_packs(self, tenant=None):
         with self._Session() as s:
-            rows = s.query(AuditPackRow).order_by(AuditPackRow.id.desc()).all()
+            q = s.query(AuditPackRow)
+            if tenant is not None:
+                q = q.filter(AuditPackRow.tenant_id == tenant)
+            rows = q.order_by(AuditPackRow.id.desc()).all()
             return [AuditPack.model_validate(r.payload) for r in rows]
 
-    def list_decision_ids(self):
+    def list_decision_ids(self, tenant=None):
         with self._Session() as s:
-            rows = s.query(EvidenceEvaluationRow.decision_id).distinct().all()
-            return [r[0] for r in rows]
+            q = s.query(EvidenceEvaluationRow.decision_id)
+            if tenant is not None:
+                q = q.filter(EvidenceEvaluationRow.tenant_id == tenant)
+            return [r[0] for r in q.distinct().all()]

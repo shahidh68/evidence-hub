@@ -59,6 +59,20 @@ def _reviewer_from_output(output: dict[str, Any]) -> Reviewer:
     return Reviewer()
 
 
+def _model_name_from_version(model_version: str) -> str:
+    """Return the stable model family/name from a version-like identifier."""
+    return model_version.split(":", 1)[0].strip() or model_version
+
+
+def _model_block_from_version(model_version: str, output: dict[str, Any]) -> ModelBlock:
+    return ModelBlock(
+        model_name=_get(output, "model_name") or _model_name_from_version(model_version),
+        model_version=model_version,
+        model_registry_reference=_get(output, "model_registry_reference"),
+        model_approval_reference=_get(output, "model_approval_reference"),
+    )
+
+
 def normalize(
     record: dict[str, Any],
     tamper: Optional[dict[str, Any]] = None,
@@ -98,9 +112,9 @@ def normalize(
                 issue=f"model_version {mv!r} does not match a standard model-identifier format.",
                 recommendation="Use a registry-style identifier, e.g. 'claims-risk-model:12'.",
             ))
-            model_block = ModelBlock(model_version=mv)
+            model_block = _model_block_from_version(mv, output)
         else:
-            model_block = ModelBlock(model_version=mv)
+            model_block = _model_block_from_version(mv, output)
     elif not human_in_loop:
         issues.append(SchemaIssue(
             field="model_version",
@@ -146,6 +160,18 @@ def normalize(
     # ── archive / integrity (from the tamper-evidence check) ──
     archive = _archive_block(record, tamper)
 
+    controls = ControlsBlock(
+        policy_check_reference=_get(output, "policy_check_reference"),
+        policy_result=_get(output, "policy_result"),
+        policy_version=_get(output, "policy_version"),
+        fairness_test_reference=_get(output, "fairness_test_reference"),
+        monitoring_snapshot_reference=_get(output, "monitoring_snapshot_reference"),
+        drift_status=_get(output, "drift_status"),
+        performance_status=_get(output, "performance_status"),
+        override_flag=output.get("override_flag") if "override_flag" in output else None,
+        retention_classification=_get(output, "retention_classification"),
+    )
+
     event = NormalizedDecisionEvent(
         decision_id=event_id,
         event_id=event_id,
@@ -159,7 +185,7 @@ def normalize(
         input=input_block,
         prompt=prompt_block,
         based_on=based_on,
-        controls=ControlsBlock(),  # all populated later via evidence updates / connectors
+        controls=controls,
         archive=archive,
     )
     return event, issues

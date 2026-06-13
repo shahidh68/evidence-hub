@@ -26,15 +26,18 @@
     font-size: 12px; padding: 3px 9px; border-radius: 20px;
     background: var(--panel2); border: 1px solid var(--border); color: var(--muted);
   }
-  input, button {
+  input, select, textarea, button {
     font: inherit; border-radius: 7px; border: 1px solid var(--border);
     background: var(--panel2); color: var(--text); padding: 7px 11px;
   }
   input { min-width: 320px; }
+  select { min-width: 180px; }
+  textarea { width: 100%; min-height: 76px; resize: vertical; }
   button { cursor: pointer; }
   button:hover { border-color: var(--accent); }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
   button.primary:hover { filter: brightness(1.1); }
+  button.linkish { background: none; border: none; color: var(--blue); padding: 0; }
   .wrap { padding: 24px; max-width: 1280px; margin: 0 auto; }
   .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 22px; }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
@@ -77,7 +80,14 @@
   .gaplist { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 16px; }
   .gaplist .chip { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; font-size: 12px; }
   .gaplist .chip.resolved { color: var(--green); border-color: rgba(63,185,80,.4); }
+  .gaplist button.chip { color: var(--text); cursor: pointer; }
+  .gaplist button.chip:hover { border-color: var(--accent); }
   .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 18px 0 6px; }
+  .form-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: 10px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+  .form-grid label, .form-card label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; }
+  .form-grid input, .form-grid select { min-width: 0; width: 100%; }
+  .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
   pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow: auto; font-size: 12px; max-height: 280px; }
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--panel2);
     border: 1px solid var(--border); padding: 10px 18px; border-radius: 8px; z-index: 30; display: none; }
@@ -148,6 +158,50 @@ const scoreColor = s => s >= 91 ? "var(--green)" : s >= 71 ? "var(--blue)" : s >
 const pill = (cls, txt) => `<span class="pill ${cls}">${esc(txt)}</span>`;
 const scoreBar = s => `<div class="score"><div class="bar"><span style="width:${s}%;background:${scoreColor(s)}"></span></div><b>${s}</b></div>`;
 
+const GAP_REF_FIELD = {
+  model_registry_reference: "model_registry_reference",
+  model_approval_reference: "model_approval_reference",
+  data_lineage_reference: "data_lineage_reference",
+  data_quality_check_reference: "data_quality_check_reference",
+  policy_check_reference: "policy_check_reference",
+  fairness_test_reference: "fairness_test_reference",
+  monitoring_snapshot_reference: "monitoring_snapshot_reference",
+  human_review_reference: "human_review_reference",
+  reviewer_authority_reference: "human_review_reference",
+  remediation_ticket_reference: "remediation_ticket_reference",
+  prompt_version_reference: null,
+  privacy_classification: null,
+  retention_classification: null,
+  policy_result: null,
+  policy_version: null,
+  drift_status: null,
+  performance_status: null,
+};
+const GAP_ARTIFACT_TYPE = {
+  model_registry_reference: "model_registry",
+  model_approval_reference: "model_approval",
+  data_lineage_reference: "data_lineage",
+  data_quality_check_reference: "data_quality",
+  policy_check_reference: "policy_check",
+  fairness_test_reference: "fairness_test",
+  monitoring_snapshot_reference: "monitoring_snapshot",
+  human_review_reference: "human_review",
+  reviewer_authority_reference: "human_review",
+  retention_classification: "retention",
+};
+function gapMeta(decisionId, gap) {
+  return state.gaps.find(g => g.decision_id === decisionId && g.gap === gap) || {};
+}
+function ownerForGap(decisionId, gap) {
+  return gapMeta(decisionId, gap).owner || "Compliance";
+}
+function artifactTypeForGap(gap) {
+  return GAP_ARTIFACT_TYPE[gap] || "other";
+}
+function refFieldForGap(gap) {
+  return Object.prototype.hasOwnProperty.call(GAP_REF_FIELD, gap) ? GAP_REF_FIELD[gap] : null;
+}
+
 let state = { tab: "decisions", decisions: [], gaps: [], models: [], packs: [] };
 
 function toast(msg) {
@@ -209,7 +263,7 @@ function renderDecisions() {
 function renderGaps() {
   if (!state.gaps.length) return `<div class="empty">No open gaps.</div>`;
   const rows = state.gaps.map(g => `
-    <tr class="clickable" onclick="openDrawer('${esc(g.decision_id)}')">
+    <tr class="clickable" onclick="openDrawer('${esc(g.decision_id)}', '${esc(g.gap)}')">
       <td><b>${esc(g.gap)}</b></td>
       <td class="mono">${esc(g.decision_id.slice(0, 8))}…</td>
       <td>${esc(g.owner)}</td>
@@ -249,7 +303,7 @@ function renderPacks() {
   return `<table><thead><tr><th>Pack</th><th>Decision</th><th>Scope</th><th>Format</th><th>Readiness</th><th>Created</th><th>Contents</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
-async function openDrawer(id) {
+async function openDrawer(id, selectedGap = "") {
   const drawer = document.getElementById("drawer");
   drawer.classList.add("open");
   drawer.innerHTML = `<button class="drawer-close" onclick="closeDrawer()">×</button><div class="muted">Loading…</div>`;
@@ -257,7 +311,9 @@ async function openDrawer(id) {
     const [view, edges] = await Promise.all([
       api(`/evidence/readiness/${id}`), api(`/evidence/graph/${id}`),
     ]);
-    const open = view.open_gaps.map(g => `<span class="chip">${esc(g)}</span>`).join("") || `<span class="muted">none</span>`;
+    const open = view.open_gaps.map(g =>
+      `<button class="chip" onclick="showEvidenceForm('${esc(id)}', '${esc(g)}')">${esc(g)}</button>`
+    ).join("") || `<span class="muted">none</span>`;
     const resolved = view.resolved_gaps.map(g => `<span class="chip resolved">✓ ${esc(g)}</span>`).join("") || `<span class="muted">none</span>`;
     const edgeRows = edges.map(e => `<div class="mono">${esc(e.relation)} → ${esc(e.to)}</div>`).join("");
     drawer.innerHTML = `
@@ -271,15 +327,109 @@ async function openDrawer(id) {
         <div>Last updated</div><div class="mono">${esc(view.last_updated)}</div>
       </div>
       <div class="section-title">Open gaps</div><div class="gaplist">${open}</div>
+      <div id="evidenceForm"></div>
       <div class="section-title">Resolved gaps</div><div class="gaplist">${resolved}</div>
       <div class="section-title">Evidence graph</div>${edgeRows || '<div class="muted">no edges</div>'}
       <div style="margin-top:20px"><button class="primary" onclick="genPack('${esc(id)}')">Generate audit pack</button></div>
       <div id="packOut"></div>`;
+    if (selectedGap) showEvidenceForm(id, selectedGap);
   } catch (e) {
     drawer.innerHTML = `<button class="drawer-close" onclick="closeDrawer()">×</button><div class="empty">${esc(e.message)}</div>`;
   }
 }
 function closeDrawer() { document.getElementById("drawer").classList.remove("open"); }
+
+function showEvidenceForm(decisionId, gap) {
+  const el = document.getElementById("evidenceForm");
+  if (!el) return;
+  const owner = ownerForGap(decisionId, gap);
+  const artifactType = artifactTypeForGap(gap);
+  const placeholder = refFieldForGap(gap)
+    ? "e.g. change-ticket:CR-4471, mlflow:model:foo:12, atlas:lineage:dataset_123"
+    : "e.g. 7y, pass, 2026.06, pseudonymised, within_threshold";
+  el.innerHTML = `
+    <div class="form-card">
+      <div class="section-title" style="margin-top:0">Close gap</div>
+      <div><b>${esc(gap)}</b></div>
+      <div class="form-grid">
+        <label>Owner
+          <input id="updOwner" value="${esc(owner)}" />
+        </label>
+        <label>Status
+          <select id="updStatus">
+            <option value="in_progress">In progress</option>
+            <option value="submitted">Submitted</option>
+            <option value="verified" selected>Verified</option>
+            <option value="done">Done</option>
+          </select>
+        </label>
+      </div>
+      <label>Evidence reference or value
+        <input id="updReference" placeholder="${esc(placeholder)}" />
+      </label>
+      <label style="margin-top:10px">Action note
+        <textarea id="updAction">Attached ${esc(gap)}.</textarea>
+      </label>
+      <div class="actions">
+        <button class="primary" onclick="submitEvidenceUpdate('${esc(decisionId)}', '${esc(gap)}')">Save evidence update</button>
+        <button onclick="document.getElementById('evidenceForm').innerHTML = ''">Cancel</button>
+        <span class="muted">Stored as append-only evidence history.</span>
+      </div>
+      <input type="hidden" id="updArtifactType" value="${esc(artifactType)}" />
+    </div>`;
+}
+
+function buildEvidenceUpdatePayload(decisionId, gap, status) {
+  const reference = document.getElementById("updReference")?.value.trim() || "";
+  const refField = refFieldForGap(gap);
+  const refs = {};
+  if (reference && refField) refs[refField] = reference;
+  const defaultAction = `Attached ${gap}.`;
+  const actionText = document.getElementById("updAction")?.value.trim() || defaultAction;
+  const action = reference && actionText === defaultAction
+    ? `Attached ${gap}: ${reference}`
+    : actionText;
+  return {
+    decision_id: decisionId,
+    gap,
+    owner: document.getElementById("updOwner")?.value.trim() || ownerForGap(decisionId, gap),
+    action,
+    status,
+    artifact_type: document.getElementById("updArtifactType")?.value || artifactTypeForGap(gap),
+    artifact_refs: refs,
+    provenance: {
+      source_system: "Evidence Hub dashboard",
+      submitted_by: "dashboard-user",
+      signature: reference || null,
+    },
+  };
+}
+
+async function postEvidenceUpdate(decisionId, gap, status) {
+  return api("/evidence/evidence-update", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(buildEvidenceUpdatePayload(decisionId, gap, status)),
+  });
+}
+
+async function submitEvidenceUpdate(decisionId, gap) {
+  const targetStatus = document.getElementById("updStatus")?.value || "verified";
+  try {
+    try {
+      await postEvidenceUpdate(decisionId, gap, targetStatus);
+    } catch (e) {
+      if (targetStatus !== "verified" && targetStatus !== "done") throw e;
+      await postEvidenceUpdate(decisionId, gap, "submitted");
+      await postEvidenceUpdate(decisionId, gap, targetStatus);
+    }
+    toast(`Updated ${gap}`);
+    await refresh();
+    await openDrawer(decisionId);
+  } catch (e) {
+    toast(e.message);
+  }
+}
 
 async function genPack(id) {
   try {
@@ -287,8 +437,23 @@ async function genPack(id) {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ scope: "per_decision", decision_id: id, format: "json" }),
     });
+    const summary = pack.sections.report_summary || {};
+    const plan = pack.sections.gap_closure_plan || [];
+    const planRows = plan.length
+      ? `<table><thead><tr><th>Gap</th><th>Owner</th><th>Priority</th><th>Next action</th></tr></thead><tbody>${
+          plan.map(item => `<tr><td>${esc(item.gap)}</td><td>${esc(item.owner)}</td><td>${pill(item.priority, item.priority)}</td><td>${esc(item.next_action)}</td></tr>`).join("")
+        }</tbody></table>`
+      : `<div class="muted">No open gaps in this pack.</div>`;
     document.getElementById("packOut").innerHTML =
-      `<div class="section-title">Audit pack ${esc(pack.audit_pack_id)}</div><pre>${esc(JSON.stringify(pack.sections, null, 2))}</pre>`;
+      `<div class="section-title">Audit pack ${esc(pack.audit_pack_id)}</div>
+       <div class="kv">
+         <div>Readiness</div><div>${scoreBar(summary.audit_readiness_score || 0)}</div>
+         <div>Status</div><div>${pill(summary.readiness_status || "unknown", (summary.readiness_status || "unknown").replace(/_/g, " "))}</div>
+         <div>Open gaps</div><div>${esc(summary.open_gap_count ?? 0)}</div>
+         <div>Recommendation</div><div>${esc(summary.recommendation || "Review the pack before sharing.")}</div>
+       </div>
+       <div class="section-title">Gap closure plan</div>${planRows}
+       <details style="margin-top:12px"><summary class="muted">Full JSON pack</summary><pre>${esc(JSON.stringify(pack.sections, null, 2))}</pre></details>`;
     toast("Audit pack generated");
     refresh();
   } catch (e) { toast(e.message); }

@@ -178,6 +178,7 @@ class EvidenceEvaluation(BaseModel):
     evaluation_id: str
     decision_id: str
     event_id: str
+    tenant_id: Optional[str] = None
     evaluated_at: str
     evidence_status: EvidenceStatus
     audit_readiness_score: int
@@ -275,6 +276,7 @@ class AuditPack(BaseModel):
     status: str
     scope: str
     decision_id: str
+    tenant_id: Optional[str] = None
     format: str
     generated_at: str
     readiness_status: EvidenceStatus

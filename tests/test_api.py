@@ -56,9 +56,12 @@ def test_full_flow_evaluate_update_readiness_pack():
     assert r.status_code == 200, r.text
     pack = r.json()
     assert pack["status"] == "generated"
-    for section in ("ledger_record", "tamper_evidence", "evidence_evaluation",
+    for section in ("report_summary", "ledger_record", "tamper_evidence",
+                    "evidence_evaluation", "gap_closure_plan",
                     "remediation_history", "evidence_graph"):
         assert section in pack["sections"]
+    assert pack["sections"]["report_summary"]["decision_id"] == EXAMPLE_EVENT_ID
+    assert isinstance(pack["sections"]["gap_closure_plan"], list)
 
 
 def test_audit_pack_rejects_unsupported_scope():

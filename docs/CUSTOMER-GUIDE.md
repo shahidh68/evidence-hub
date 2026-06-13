@@ -131,11 +131,15 @@ Generate one from a decision's drawer, or via the API (your admin can script it)
 
 ## 7. How gaps get filled
 
-Two ways:
+Three ways:
 
-1. **Manually** — a team attaches the missing reference (e.g. a data-lineage
-   link). Each attachment is recorded append-only, with who and when.
-2. **Automatically** — if your org maintains an *evidence manifest* (a file
+1. **From the dashboard** — open the **Gap queue**, click a gap, add the
+   evidence reference or value, choose the status, and save. Evidence Hub records
+   the update append-only and recalculates the readiness score.
+2. **From the API** — call `/evidence/evidence-update` with the same information
+   if you want to wire this into Jira, ServiceNow, MLflow, your model registry, or
+   another internal tool.
+3. **Automatically** — if your org maintains an *evidence manifest* (a file
    listing which model is approved, which policy applies, etc.), the Hub
    auto-fills the static gaps and tags each with the manifest's version. This is
    why a decision can jump from, say, 41 → 68 the moment it's evaluated.
@@ -169,7 +173,9 @@ corrected at the source.
 
 **Can I export to PDF?**
 Audit packs are JSON today; PDF export is on the roadmap. JSON is the
-auditor-friendly, machine-verifiable format.
+auditor-friendly, machine-verifiable format. Each pack starts with a plain
+`report_summary`, then a `gap_closure_plan`, followed by the raw ledger record,
+tamper evidence, remediation history, and graph sections for traceability.
 
 **Who do I contact for access or a new key?**
 Your Evidence Hub administrator — see the [Admin Runbook](ADMIN-RUNBOOK.md).

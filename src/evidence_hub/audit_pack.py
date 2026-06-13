@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from . import graph, readiness, registry
+from . import catalog, graph, readiness, registry
 from .schemas import AuditPack, EvidenceStatus, NormalizedDecisionEvent
 from .store import Store
 
@@ -27,6 +27,41 @@ def _latest_normalized(store: Store, decision_id: str) -> NormalizedDecisionEven
     return store.latest_normalized(decision_id)
 
 
+def _report_summary(decision_id: str, normalized: NormalizedDecisionEvent, view, evaluation) -> dict:
+    score = view.audit_readiness_score if view else evaluation.audit_readiness_score
+    status = (view.current_evidence_status if view else evaluation.evidence_status).value
+    open_gaps = view.open_gaps if view else evaluation.missing_evidence
+    resolved_gaps = view.resolved_gaps if view else []
+    if open_gaps:
+        recommendation = "Not audit-ready yet. Close the open evidence gaps before relying on this pack."
+    else:
+        recommendation = "Audit-ready on the evidence currently tracked by Evidence Hub."
+    return {
+        "decision_id": decision_id,
+        "tenant_id": normalized.tenant_id,
+        "outcome": normalized.decision.outcome,
+        "model_version": normalized.model.model_version,
+        "integrity_status": evaluation.integrity_status.value,
+        "readiness_status": status,
+        "audit_readiness_score": score,
+        "open_gap_count": len(open_gaps),
+        "resolved_gap_count": len(resolved_gaps),
+        "recommendation": recommendation,
+    }
+
+
+def _gap_closure_plan(open_gaps: list[str]) -> list[dict]:
+    return [
+        {
+            "gap": gap,
+            "owner": catalog.owner_for(gap),
+            "priority": catalog.priority_for(gap),
+            "next_action": f"Add or verify {gap}.",
+        }
+        for gap in open_gaps
+    ]
+
+
 def build_audit_pack(store: Store, decision_id: str) -> AuditPack:
     snapshot = store.latest_snapshot(decision_id)
     normalized = store.latest_normalized(decision_id)
@@ -40,7 +75,9 @@ def build_audit_pack(store: Store, decision_id: str) -> AuditPack:
     updates = registry.list_updates(store, decision_id)
     edges = graph.build_graph(store, normalized)
 
+    open_gaps = view.open_gaps if view else evaluation.missing_evidence
     sections = {
+        "report_summary": _report_summary(decision_id, normalized, view, evaluation),
         "decision_summary": {
             "decision_id": decision_id,
             "event_type": normalized.event_type,
@@ -58,7 +95,8 @@ def build_audit_pack(store: Store, decision_id: str) -> AuditPack:
         "controls": normalized.controls.model_dump(),
         "linked_events": normalized.based_on.model_dump(),
         "evidence_evaluation": evaluation.model_dump(),
-        "open_gaps": view.open_gaps if view else evaluation.missing_evidence,
+        "open_gaps": open_gaps,
+        "gap_closure_plan": _gap_closure_plan(open_gaps),
         "remediation_history": [u.model_dump(mode="json") for u in updates],
         "evidence_graph": [e.model_dump(by_alias=True) for e in edges],
     }
@@ -69,6 +107,7 @@ def build_audit_pack(store: Store, decision_id: str) -> AuditPack:
         status="generated",
         scope="per_decision",
         decision_id=decision_id,
+        tenant_id=normalized.tenant_id,
         format="json",
         generated_at=_now(),
         readiness_status=EvidenceStatus(readiness_status),

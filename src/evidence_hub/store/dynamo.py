@@ -48,9 +48,12 @@ class DynamoStore:
     def _put(self, pk: str, sk: str, **extra: Any) -> None:
         self.table.put_item(Item={"pk": pk, "sk": sk, **extra})
 
-    def _index_decision(self, decision_id: str) -> None:
-        # Idempotent upsert so list_decision_ids() sees every evaluated decision.
+    def _index_decision(self, decision_id: str, tenant: str | None) -> None:
+        # Idempotent upserts: a global index (admin view) and, when known, a
+        # per-tenant index so a scoped viewer only sees their own decisions.
         self._put("IDX#DECISIONS", decision_id)
+        if tenant:
+            self._put(f"IDX#TENANT#{tenant}", decision_id)
 
     def add_snapshot(self, decision_id, event_id, tenant_id, record, tamper):
         self._put(_dec_pk(decision_id), f"SNAP#{new_seq()}",
@@ -64,15 +67,18 @@ class DynamoStore:
     def add_evaluation(self, evaluation: EvidenceEvaluation):
         self._put(_dec_pk(evaluation.decision_id), f"EVAL#{new_seq()}",
                   data=json.dumps(evaluation.model_dump(mode="json")))
-        self._index_decision(evaluation.decision_id)
+        self._index_decision(evaluation.decision_id, evaluation.tenant_id)
 
     def add_update(self, update: EvidenceUpdate):
         self._put(_dec_pk(update.decision_id), f"UPD#{new_seq()}",
                   data=json.dumps(update.model_dump(mode="json")), gap=update.gap or "")
 
     def add_pack(self, pack: AuditPack):
-        self._put("IDX#PACKS", new_seq(), data=json.dumps(pack.model_dump(mode="json")),
-                  decision_id=pack.decision_id)
+        seq = new_seq()
+        body = json.dumps(pack.model_dump(mode="json"))
+        self._put("IDX#PACKS", seq, data=body, decision_id=pack.decision_id)
+        if pack.tenant_id:
+            self._put(f"IDX#PACKS#{pack.tenant_id}", seq, data=body, decision_id=pack.decision_id)
 
     def add_audit_log(self, action, decision_id=None, actor=None, detail=None):
         entry = {"action": action, "decision_id": decision_id, "actor": actor,
@@ -110,15 +116,14 @@ class DynamoStore:
         )
         return [EvidenceUpdate.model_validate(json.loads(i["data"])) for i in resp.get("Items", [])]
 
-    def list_packs(self):
+    def list_packs(self, tenant=None):
         from boto3.dynamodb.conditions import Key
-        resp = self.table.query(
-            KeyConditionExpression=Key("pk").eq("IDX#PACKS"),
-            ScanIndexForward=False,
-        )
+        pk = f"IDX#PACKS#{tenant}" if tenant is not None else "IDX#PACKS"
+        resp = self.table.query(KeyConditionExpression=Key("pk").eq(pk), ScanIndexForward=False)
         return [AuditPack.model_validate(json.loads(i["data"])) for i in resp.get("Items", [])]
 
-    def list_decision_ids(self):
+    def list_decision_ids(self, tenant=None):
         from boto3.dynamodb.conditions import Key
-        resp = self.table.query(KeyConditionExpression=Key("pk").eq("IDX#DECISIONS"))
+        pk = f"IDX#TENANT#{tenant}" if tenant is not None else "IDX#DECISIONS"
+        resp = self.table.query(KeyConditionExpression=Key("pk").eq(pk))
         return [i["sk"] for i in resp.get("Items", [])]

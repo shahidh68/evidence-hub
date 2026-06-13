@@ -136,6 +136,7 @@ def evaluate(
         evaluation_id=f"eval-{uuid.uuid4().hex[:12]}",
         decision_id=event.decision_id,
         event_id=event.event_id,
+        tenant_id=event.tenant_id,
         evaluated_at=_now(),
         evidence_status=status,
         audit_readiness_score=score,

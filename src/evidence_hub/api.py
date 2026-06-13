@@ -27,7 +27,7 @@ from . import dashboard as dashboard_mod
 from . import graph as graph_mod
 from . import readiness as readiness_mod
 from . import registry, service
-from .auth import make_admin_guard
+from .auth import Authenticator, Principal, make_dependencies
 from .config import get_settings
 from .ledger_source import LedgerError, make_source
 from .resolvers import make_resolver
@@ -68,7 +68,8 @@ def create_app() -> FastAPI:
     source = make_source(settings)
     resolver = make_resolver(settings)
     store = make_store(settings)
-    guard = make_admin_guard(settings)  # no-op unless EVIDENCE_ADMIN_* configured
+    auth = Authenticator(settings)
+    _, guard = make_dependencies(auth)  # no-op unless EVIDENCE_ADMIN_* configured
 
     app = FastAPI(title="AI Decision Evidence Hub", version="0.1.0")
     app.state.settings = settings
