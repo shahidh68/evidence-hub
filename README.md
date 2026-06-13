@@ -3,17 +3,21 @@
 Part of the **AI Audit Ledger** family ([audit-ledger](https://github.com/shahidh68/audit-ledger)
 · [audit-ledger-mcp](https://www.npmjs.com/package/audit-ledger-mcp) · **evidence-hub**).
 
-An append-only **evidence and compliance layer** that sits *above* the
-[AI Audit Ledger](https://github.com/shahidh68/audit-ledger). The ledger is the
-immutable record of *what happened* at decision time. The Evidence Hub answers
-the next question:
+An audit workbench that sits *above* the
+[AI Audit Ledger](https://github.com/shahidh68/audit-ledger). The ledger keeps a
+small, tamper-evident record of *what happened* at decision time. The Evidence
+Hub turns that record into an audit case file and answers the next question:
 
-> Does this decision have the evidence it needs to survive an audit — what's
+> Does this decision have the evidence it needs to survive an audit: what's
 > present, what's missing, who owns the gaps, and what's been remediated?
 
 The Hub **only reads** the ledger. It never modifies ledger records (the ledger
 stays the canonical, tamper-evident source of truth). All evidence and
 remediation state lives in the Hub's own append-only store.
+
+Open gaps are expected. They do not mean the ledger is wrong; they show the
+follow-up evidence still needed before a lightweight decision record becomes
+audit-ready.
 
 **Runs locally** (FastAPI + SQLite) and **deploys to AWS** serverless (Lambda +
 DynamoDB, no VPC, scale-to-zero) — see [Deploy to AWS](#deploy-to-aws).
@@ -103,6 +107,25 @@ LEDGER_SOURCE=sandbox uvicorn evidence_hub.api:app --reload
 Then open the **dashboard** at `http://127.0.0.1:8000/ui/` (or the API docs at
 `/docs`). In `fixtures` mode, enter a fixture `event_id` and click Evaluate; in
 `sandbox`/`live` mode, click **Pull recent** to evaluate recent ledger events.
+
+### Testing without an admin key
+
+Customers who clone the repo do **not** need your deployed Evidence Hub admin key.
+For local testing, leave `EVIDENCE_ADMIN_KEY` unset. The Hub treats localhost as
+an open development instance, so the dashboard will not ask for a key.
+
+Use one of these paths:
+
+```bash
+# Fully offline, using bundled test records
+LEDGER_SOURCE=fixtures EVIDENCE_ADMIN_KEY= uvicorn evidence_hub.api:app --reload
+
+# Public sandbox ledger, still no Hub admin key needed
+LEDGER_SOURCE=sandbox EVIDENCE_ADMIN_KEY= uvicorn evidence_hub.api:app --reload
+```
+
+The admin key is only needed for a shared or deployed Hub, where multiple people
+can reach the same evidence store.
 
 ### Example
 

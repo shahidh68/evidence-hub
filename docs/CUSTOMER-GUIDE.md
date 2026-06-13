@@ -7,13 +7,13 @@ background needed.
 
 ## 1. What the Evidence Hub is
 
-Your organisation records every AI decision in the **AI Audit Ledger** — an
+Your organisation records every AI decision in the **AI Audit Ledger** — a small,
 immutable, tamper-evident log. The ledger proves *what happened and that it
 wasn't changed*.
 
 The **Evidence Hub** answers the next question an auditor asks:
 
-> "Fine, the decision is recorded — but does it have the **evidence** behind it?
+> "Fine, the decision is recorded. Does it have the **evidence** behind it?
 > The approved model, the data lineage, the policy check, the human sign-off?
 > What's missing, and who's fixing it?"
 
@@ -23,6 +23,10 @@ of exactly what evidence is present vs missing, who owns each gap, and an
 
 It **only reads** the ledger — it never changes a recorded decision.
 
+Open gaps are expected. The minimum ledger record proves the decision happened;
+the Hub then shows the follow-up evidence needed to make that decision
+audit-ready.
+
 **The family:**
 [audit-ledger](https://github.com/shahidh68/audit-ledger) (what happened) ·
 [audit-ledger-mcp](https://www.npmjs.com/package/audit-ledger-mcp) (how agents write to it · `npx -y audit-ledger-mcp`) ·
@@ -31,6 +35,8 @@ It **only reads** the ledger — it never changes a recorded decision.
 ---
 
 ## 2. Getting in
+
+### If your organisation hosts the Hub
 
 Open the dashboard URL your admin gave you (it ends in `/ui/`), e.g.
 `https://<your-hub>.lambda-url.eu-west-1.on.aws/ui/`.
@@ -42,6 +48,16 @@ every request. The badge then reads **🔑 key set**.
 To jump to the raw ledger records, use the **"Ledger dashboard ↗"** link in the
 header — there you can browse records, verify tamper-evidence, and check whether
 any record has been deleted (completeness).
+
+### If you cloned the repo to try it locally
+
+You do **not** need the deployed admin key. Leave `EVIDENCE_ADMIN_KEY` unset and
+run the Hub on your own machine. Local mode is open by design, so the dashboard at
+`http://127.0.0.1:8000/ui/` will not ask for a key.
+
+Use `LEDGER_SOURCE=fixtures` for a fully offline trial, or `LEDGER_SOURCE=sandbox`
+to read the public sandbox ledger. The admin key is only for shared or hosted
+Evidence Hub deployments.
 
 ---
 
@@ -100,7 +116,8 @@ The score is out of 100, weighted across nine evidence categories:
 
 A decision can be **integrity-verified but only partially audit-ready** — that
 just means the *record* is sound but some *supporting evidence* hasn't been
-attached yet. That's normal, and the gap queue tells you what to chase.
+attached yet. That's normal by design: the ledger stays lightweight, and the gap
+queue turns the remaining audit work into clear tasks.
 
 ---
 
@@ -119,17 +136,29 @@ Clicking a decision opens a panel with:
 
 ## 6. Audit packs — what's in one
 
-A per-decision JSON package an auditor can read on its own. Sections include:
-the decision summary, the original ledger record, the **tamper-evidence result**,
+A per-decision package an auditor can read on its own. Sections include: the
+decision summary, the original ledger record, the **tamper-evidence result**,
 human-review details, model / data / prompt / control evidence, linked
 triage/risk events, the evidence evaluation, **open gaps**, the **remediation
 history** (who did what, when), and the evidence graph.
 
 Generate one from a decision's drawer, or via the API (your admin can script it).
+The dashboard then gives you two outputs:
+
+1. **Print audit details** — opens a clean print view with the executive summary,
+   readiness score, tamper check, evidence sections, gap closure plan,
+   remediation history, evidence graph, and a full JSON appendix. Use the browser
+   print dialog to print or save as PDF.
+2. **Download JSON pack** — saves the complete machine-readable audit pack for
+   technical review, regulator evidence portals, or long-term storage.
 
 ---
 
 ## 7. How gaps get filled
+
+Closing a gap does not edit the original ledger record. It adds an append-only
+evidence update in the Hub: a reference, value, status, owner, and note showing
+how the missing item was handled.
 
 Three ways:
 

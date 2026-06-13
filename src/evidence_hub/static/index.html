@@ -43,6 +43,8 @@
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
   .card .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
   .card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .framing { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 13px 16px; margin: -8px 0 18px; color: var(--muted); }
+  .framing b { color: var(--text); }
   .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
   .tab { padding: 9px 16px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; }
   .tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
@@ -88,6 +90,8 @@
   .form-grid label, .form-card label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; }
   .form-grid input, .form-grid select { min-width: 0; width: 100%; }
   .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .pack-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+  .pack-note { font-size: 12px; color: var(--muted); }
   pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow: auto; font-size: 12px; max-height: 280px; }
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--panel2);
     border: 1px solid var(--border); padding: 10px 18px; border-radius: 8px; z-index: 30; display: none; }
@@ -107,6 +111,9 @@
 
 <div class="wrap">
   <div class="cards" id="cards"></div>
+  <div class="framing">
+    <b>Open gaps are expected.</b> The ledger keeps the decision record small and tamper-evident; Evidence Hub turns that record into an audit case file by showing which references, checks, and sign-offs still need to be attached.
+  </div>
 
   <div class="tabs">
     <div class="tab active" data-tab="decisions" onclick="switchTab('decisions')">Decisions</div>
@@ -203,6 +210,7 @@ function refFieldForGap(gap) {
 }
 
 let state = { tab: "decisions", decisions: [], gaps: [], models: [], packs: [] };
+const generatedPacks = new Map();
 
 function toast(msg) {
   const t = document.getElementById("toast");
@@ -272,7 +280,7 @@ function renderGaps() {
       <td>${esc(g.due_date || "—")}</td>
       <td>${pill(g.risk_tier, g.risk_tier)}</td>
     </tr>`).join("");
-  return `<table><thead><tr><th>Gap</th><th>Decision</th><th>Owner</th><th>Priority</th><th>Status</th><th>Due</th><th>Risk</th></tr></thead><tbody>${rows}</tbody></table>`;
+  return `<div class="framing"><b>Gap queue = audit worklist.</b> A gap does not mean the ledger is wrong. It means this decision needs a reference, value, or verification trail before it is audit-ready.</div><table><thead><tr><th>Gap</th><th>Decision</th><th>Owner</th><th>Priority</th><th>Status</th><th>Due</th><th>Risk</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function renderModels() {
@@ -326,7 +334,9 @@ async function openDrawer(id, selectedGap = "") {
         <div>Integrity</div><div>${pill(view.integrity_status, view.integrity_status)}</div>
         <div>Last updated</div><div class="mono">${esc(view.last_updated)}</div>
       </div>
-      <div class="section-title">Open gaps</div><div class="gaplist">${open}</div>
+      <div class="section-title">Open gaps</div>
+      <div class="muted">Expected follow-up evidence for this decision. Click a gap to attach the reference or value that closes it.</div>
+      <div class="gaplist">${open}</div>
       <div id="evidenceForm"></div>
       <div class="section-title">Resolved gaps</div><div class="gaplist">${resolved}</div>
       <div class="section-title">Evidence graph</div>${edgeRows || '<div class="muted">no edges</div>'}
@@ -349,8 +359,9 @@ function showEvidenceForm(decisionId, gap) {
     : "e.g. 7y, pass, 2026.06, pseudonymised, within_threshold";
   el.innerHTML = `
     <div class="form-card">
-      <div class="section-title" style="margin-top:0">Close gap</div>
+      <div class="section-title" style="margin-top:0">Close audit gap</div>
       <div><b>${esc(gap)}</b></div>
+      <div class="muted">Add the evidence reference or value. The original ledger record stays unchanged; this update is stored as append-only evidence history.</div>
       <div class="form-grid">
         <label>Owner
           <input id="updOwner" value="${esc(owner)}" />
@@ -431,12 +442,193 @@ async function submitEvidenceUpdate(decisionId, gap) {
   }
 }
 
+function titleize(key) {
+  return (key || "").toString().replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function printValue(value) {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (Array.isArray(value)) return value.length ? value.map(printValue).join(", ") : "None";
+  if (typeof value === "object") return JSON.stringify(value);
+  return value;
+}
+
+function nonEmptyEntries(obj) {
+  return Object.entries(obj || {}).filter(([, value]) => {
+    if (value === null || value === undefined || value === "") return false;
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === "object") return Object.keys(value).length > 0;
+    return true;
+  });
+}
+
+function printKv(title, obj) {
+  const rows = nonEmptyEntries(obj).map(([key, value]) =>
+    `<tr><th>${esc(titleize(key))}</th><td>${esc(printValue(value))}</td></tr>`
+  ).join("");
+  return `<section class="print-section"><h2>${esc(title)}</h2>${rows ? `<table class="kv-table"><tbody>${rows}</tbody></table>` : `<p class="muted">No details recorded.</p>`}</section>`;
+}
+
+function printList(title, items, emptyText = "None recorded.") {
+  const body = (items || []).length
+    ? `<ul>${items.map(item => `<li>${esc(printValue(item))}</li>`).join("")}</ul>`
+    : `<p class="muted">${esc(emptyText)}</p>`;
+  return `<section class="print-section allow-break"><h2>${esc(title)}</h2>${body}</section>`;
+}
+
+function printTable(title, headers, rows, emptyText = "None recorded.") {
+  const body = rows.length
+    ? `<table><thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>`
+    : `<p class="muted">${esc(emptyText)}</p>`;
+  return `<section class="print-section allow-break"><h2>${esc(title)}</h2>${body}</section>`;
+}
+
+function updateRefs(update) {
+  return nonEmptyEntries(update.artifact_refs || {})
+    .map(([key, value]) => `${titleize(key)}: ${printValue(value)}`)
+    .join("; ") || "—";
+}
+
+function renderPrintPack(pack) {
+  const sections = pack.sections || {};
+  const summary = sections.report_summary || {};
+  const decision = sections.decision_summary || {};
+  const evaluation = sections.evidence_evaluation || {};
+  const risk = evaluation.risk_assessment || {};
+  const plan = sections.gap_closure_plan || [];
+  const updates = sections.remediation_history || [];
+  const graph = sections.evidence_graph || [];
+  const generatedAt = pack.generated_at || new Date().toISOString();
+  const title = `Audit Pack ${pack.audit_pack_id || ""}`;
+
+  const planRows = plan.map(item =>
+    `<tr><td>${esc(item.gap)}</td><td>${esc(item.owner)}</td><td>${esc(item.priority)}</td><td>${esc(item.next_action)}</td></tr>`
+  );
+  const updateRows = updates.map(update =>
+    `<tr><td>${esc(update.timestamp_utc || "—")}</td><td>${esc(update.gap || "—")}</td><td>${esc(update.owner || "—")}</td><td>${esc(update.status || "—")}</td><td>${esc(update.action || "—")}</td><td>${esc(updateRefs(update))}</td></tr>`
+  );
+  const graphRows = graph.map(edge =>
+    `<tr><td>${esc(edge.relation || "—")}</td><td>${esc(edge.from || edge.from_ || "—")}</td><td>${esc(edge.to || "—")}</td><td>${esc(edge.source || "—")}</td></tr>`
+  );
+
+  return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>${esc(title)}</title>
+<style>
+  @page { size: A4; margin: 14mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: #111827; background: #fff; font: 12px/1.45 Arial, Helvetica, sans-serif; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  h2 { font-size: 14px; margin: 0 0 8px; border-bottom: 1px solid #d1d5db; padding-bottom: 4px; }
+  p { margin: 0 0 8px; }
+  table { width: 100%; border-collapse: collapse; margin: 4px 0 8px; page-break-inside: auto; }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; page-break-after: auto; }
+  th, td { text-align: left; vertical-align: top; border: 1px solid #d1d5db; padding: 6px 7px; word-break: break-word; }
+  th { background: #f3f4f6; font-weight: 700; }
+  ul { margin: 0 0 8px 18px; padding: 0; }
+  li { margin-bottom: 3px; page-break-inside: avoid; }
+  pre { white-space: pre-wrap; word-break: break-word; border: 1px solid #d1d5db; background: #f9fafb; padding: 8px; font: 10px/1.35 Consolas, "Courier New", monospace; }
+  .header { display: flex; justify-content: space-between; gap: 16px; border-bottom: 2px solid #111827; padding-bottom: 10px; margin-bottom: 12px; }
+  .muted { color: #4b5563; }
+  .lead { font-size: 13px; max-width: 720px; }
+  .badge { display: inline-block; border: 1px solid #9ca3af; border-radius: 999px; padding: 2px 8px; font-size: 11px; margin-right: 4px; }
+  .print-section { page-break-inside: avoid; break-inside: avoid; margin: 0 0 12px; }
+  .print-section.allow-break { page-break-inside: auto; break-inside: auto; }
+  .kv-table th { width: 32%; }
+  .appendix { page-break-before: always; break-before: page; }
+  .no-print { margin: 0 0 12px; }
+  @media print { .no-print { display: none; } body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+<div class="no-print"><button onclick="window.print()">Print</button></div>
+<div class="header">
+  <div>
+    <h1>AI Decision Evidence Hub - Audit Details</h1>
+    <p class="lead">This report turns a lightweight Audit Ledger record into an audit case file. Open gaps are expected work items; they do not change the original ledger record.</p>
+  </div>
+  <div>
+    <div><b>Pack:</b> ${esc(pack.audit_pack_id)}</div>
+    <div><b>Generated:</b> ${esc(generatedAt)}</div>
+    <div><b>Format:</b> ${esc(pack.format || "json")}</div>
+  </div>
+</div>
+<section class="print-section">
+  <h2>Executive Summary</h2>
+  <table class="kv-table"><tbody>
+    <tr><th>Decision ID</th><td>${esc(summary.decision_id || pack.decision_id)}</td></tr>
+    <tr><th>Tenant</th><td>${esc(summary.tenant_id || pack.tenant_id || "—")}</td></tr>
+    <tr><th>Outcome</th><td>${esc(summary.outcome || "—")}</td></tr>
+    <tr><th>Model Version</th><td>${esc(summary.model_version || "—")}</td></tr>
+    <tr><th>Integrity Status</th><td><span class="badge">${esc(summary.integrity_status || "unknown")}</span></td></tr>
+    <tr><th>Readiness</th><td>${esc(summary.audit_readiness_score ?? "—")} / 100 <span class="badge">${esc(summary.readiness_status || pack.readiness_status || "unknown")}</span></td></tr>
+    <tr><th>Open Gaps</th><td>${esc(summary.open_gap_count ?? 0)}</td></tr>
+    <tr><th>Resolved Gaps</th><td>${esc(summary.resolved_gap_count ?? 0)}</td></tr>
+    <tr><th>Recommendation</th><td>${esc(summary.recommendation || "Review the pack before sharing.")}</td></tr>
+  </tbody></table>
+</section>
+${printKv("Decision Summary", decision)}
+${printKv("Risk Assessment", risk)}
+${printList("Present Evidence", evaluation.present_evidence || [])}
+${printList("Open Evidence Gaps", sections.open_gaps || evaluation.missing_evidence || [])}
+${printTable("Gap Closure Plan", ["Gap", "Owner", "Priority", "Next Action"], planRows, "No open gaps in this pack.")}
+${printTable("Remediation History", ["Timestamp", "Gap", "Owner", "Status", "Action", "Evidence Reference"], updateRows, "No remediation updates recorded yet.")}
+${printKv("Tamper Evidence", sections.tamper_evidence || {})}
+${printKv("Model Evidence", sections.model_evidence || {})}
+${printKv("Data Evidence", sections.data_evidence || {})}
+${printKv("Prompt Evidence", sections.prompt_evidence || {})}
+${printKv("Controls", sections.controls || {})}
+${printKv("Human Review", sections.human_review || {})}
+${printKv("Linked Events", sections.linked_events || {})}
+${printTable("Evidence Graph", ["Relation", "From", "To", "Source"], graphRows, "No graph edges recorded.")}
+${printList("Schema Issues", evaluation.schema_issues || [], "No schema issues recorded.")}
+${printList("Recommended Actions", (evaluation.recommended_actions || []).map(a => `${a.action} (${a.owner}, ${a.priority})`), "No recommended actions recorded.")}
+<section class="print-section allow-break appendix">
+  <h2>Appendix: Full Machine-Readable Audit Pack JSON</h2>
+  <p class="muted">Included so the printed or PDF copy contains the same evidence package as the downloaded JSON.</p>
+  <pre>${esc(JSON.stringify(pack, null, 2))}</pre>
+</section>
+</body>
+</html>`;
+}
+
+function printAuditPack(packId) {
+  const pack = generatedPacks.get(packId);
+  if (!pack) return toast("Generate the audit pack again before printing");
+  const win = window.open("", "_blank");
+  if (!win) return toast("Allow pop-ups to print the audit pack");
+  win.document.open();
+  win.document.write(renderPrintPack(pack));
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 300);
+}
+
+function downloadAuditPack(packId) {
+  const pack = generatedPacks.get(packId);
+  if (!pack) return toast("Generate the audit pack again before downloading");
+  const blob = new Blob([JSON.stringify(pack, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${(pack.audit_pack_id || "audit-pack").replace(/[^a-z0-9._-]/gi, "_")}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 async function genPack(id) {
   try {
     const pack = await api("/audit-pack", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ scope: "per_decision", decision_id: id, format: "json" }),
     });
+    generatedPacks.set(pack.audit_pack_id, pack);
     const summary = pack.sections.report_summary || {};
     const plan = pack.sections.gap_closure_plan || [];
     const planRows = plan.length
@@ -451,6 +643,11 @@ async function genPack(id) {
          <div>Status</div><div>${pill(summary.readiness_status || "unknown", (summary.readiness_status || "unknown").replace(/_/g, " "))}</div>
          <div>Open gaps</div><div>${esc(summary.open_gap_count ?? 0)}</div>
          <div>Recommendation</div><div>${esc(summary.recommendation || "Review the pack before sharing.")}</div>
+       </div>
+       <div class="pack-actions">
+         <button class="primary" onclick="printAuditPack('${esc(pack.audit_pack_id)}')">Print audit details</button>
+         <button onclick="downloadAuditPack('${esc(pack.audit_pack_id)}')">Download JSON pack</button>
+         <span class="pack-note">Print includes summary, evidence, tamper check, gaps, remediation history, graph, and JSON appendix.</span>
        </div>
        <div class="section-title">Gap closure plan</div>${planRows}
        <details style="margin-top:12px"><summary class="muted">Full JSON pack</summary><pre>${esc(JSON.stringify(pack.sections, null, 2))}</pre></details>`;

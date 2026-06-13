@@ -3,11 +3,13 @@
 ## The one-line problem
 
 Your **AI Audit Ledger** already records, immutably, *what an AI decision was and
-that it hasn't been tampered with*. It does **not** tell you whether that decision
-has all the **evidence** an auditor would ask for — the model approval, the data
-lineage, the policy check, the human-review rationale — what's **missing**, who
-**owns** each gap, and what's been **fixed**. The **Evidence Hub** is the layer
-that answers that, without ever touching the ledger.
+that it hasn't been tampered with*. That record is deliberately lightweight. It
+does **not** try to carry every model approval, data lineage check, policy result,
+monitoring snapshot, or human-review note an auditor may ask for later.
+
+The **Evidence Hub** turns that ledger record into an audit case file. It shows
+what evidence is already present, what is still missing, who owns each expected
+gap, and what has been fixed, without ever touching the ledger.
 
 Today we took the Evidence Hub from "runs on my laptop" to "running in AWS."
 

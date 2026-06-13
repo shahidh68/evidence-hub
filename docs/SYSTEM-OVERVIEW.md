@@ -27,7 +27,7 @@ This system does all three, without storing anyone's personal data.
 |---|---|---|
 | **AI Audit Ledger** | The tamper-proof logbook. Every decision is written once and sealed for 7 years (can't be edited or deleted). | [audit-ledger](https://github.com/shahidh68/audit-ledger) |
 | **audit-ledger-mcp** | The adapter that lets any AI agent (Claude, Cursor, LangGraph…) write to the ledger with one line of config. | [npm: audit-ledger-mcp](https://www.npmjs.com/package/audit-ledger-mcp) |
-| **AI Decision Evidence Hub** | Sits *above* the ledger (read-only). Scores each decision's **audit-readiness 0–100**, lists what evidence is missing and who owns it, and generates audit packs. | [evidence-hub](https://github.com/shahidh68/evidence-hub) |
+| **AI Decision Evidence Hub** | The audit workbench above the ledger (read-only). It turns a lightweight decision record into an audit case file by scoring **audit-readiness 0–100**, listing expected evidence gaps, assigning owners, and generating audit packs. | [evidence-hub](https://github.com/shahidh68/evidence-hub) |
 | **Two dashboards** | The **Ledger dashboard** (browse records, verify tamper-evidence, check for deleted records). The **Evidence Hub dashboard** (readiness scores, gaps, audit packs). They cross-link. | — |
 | **LangGraph loan-triage demo** *(optional)* | A worked example: two AI agents + a human reviewer that write real decisions to the ledger. | langgraph-loan-triage |
 
@@ -42,11 +42,14 @@ This system does all three, without storing anyone's personal data.
    **and** sealed in immutable S3 storage for 7 years. Each record gets a sequence
    number so deletions are detectable.
 4. The **Evidence Hub** reads that decision over the ledger's API (read-only),
-   works out which evidence is present vs missing, and gives it a **0–100 score**.
+   works out which follow-up evidence is present vs missing, and gives it a
+   **0–100 score**.
 5. You view it: the **Ledger dashboard** for the raw record + integrity, the
    **Evidence Hub dashboard** for audit-readiness and audit packs.
 
-The ledger is the source of truth. The Evidence Hub never changes it.
+The ledger is the source of truth. The Evidence Hub never changes it. Open gaps
+are expected: they are the audit work still needed after the minimum decision
+record has been captured.
 
 ---
 

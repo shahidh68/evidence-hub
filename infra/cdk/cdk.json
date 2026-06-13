@@ -5,6 +5,7 @@
     "exclude": ["README.md", "cdk*.json", "**/*.d.ts", "**/*.js", "node_modules"]
   },
   "context": {
+    "auditApiUrl": "https://m3csva3l3h.execute-api.eu-west-1.amazonaws.com/prod",
     "@aws-cdk/core:newStyleStackSynthesis": true
   }
 }
