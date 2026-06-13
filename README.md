@@ -21,6 +21,7 @@ DynamoDB, no VPC, scale-to-zero) — see [Deploy to AWS](#deploy-to-aws).
 ### Documentation
 | Doc | Audience |
 |---|---|
+| [`docs/SYSTEM-OVERVIEW.md`](docs/SYSTEM-OVERVIEW.md) | Everyone — how the whole family works + what keys/URLs/env vars you need to run it |
 | [`docs/CUSTOMER-GUIDE.md`](docs/CUSTOMER-GUIDE.md) | Compliance / risk / audit — using the dashboard, reading scores & gaps, audit packs |
 | [`docs/ADMIN-RUNBOOK.md`](docs/ADMIN-RUNBOOK.md) | Operators — deploy/redeploy, key rotation, monitoring, troubleshooting, teardown |
 | [`WHAT-WE-BUILT-TODAY.md`](WHAT-WE-BUILT-TODAY.md) | Plain-English overview of the AWS build |
